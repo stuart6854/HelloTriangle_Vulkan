@@ -19,7 +19,9 @@ private:
     
     void init_window();
     
-    void list_supported_extensions();
+    /* Checks if all of the requested layers are available */
+    static bool check_validation_layer_support();
+    static void list_supported_extensions();
     void create_vulkan_instance();
     void init_vulkan();
     
