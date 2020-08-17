@@ -32,18 +32,58 @@ void HelloTriangleApp::init_window()
     
     // Create GLFW window
     m_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan - Hello Triangle", nullptr, nullptr);
+}
+
+void HelloTriangleApp::create_vulkan_instance()
+{
+    // Fill a struct with some info about our application. This is technically optional,
+    // but may provide some useful information to the driver in order to optimise our
+    // specific application.
+    VkApplicationInfo appInfo { };
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = "Vulkan - Hello Triangle";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName = "No Engine";
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_0;
     
+    // This struct tells the Vulkan driver which global (entire program) extensions and
+    // validation layers we want to use. This is NOT optional.
+    VkInstanceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;
+    
+    // Specify the desired global extensions. Vulkan is a platform agnostic API,
+    // which means we need a an extension to interface with the window system.
+    // GLFW provides a handy function that returns the extensions it needs.
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions;
+    
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    
+    createInfo.enabledExtensionCount = glfwExtensionCount;
+    createInfo.ppEnabledExtensionNames = glfwExtensions;
+    
+    // What global validation layers to enable
+    createInfo.enabledLayerCount = 0;
+    
+    // Create the Vulkan instance
+    if(vkCreateInstance(&createInfo, nullptr, &m_instance) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create Vulkan instance!");
+    }
 }
 
 void HelloTriangleApp::init_vulkan()
 {
-
+    create_vulkan_instance();
 }
+
 
 void HelloTriangleApp::main_loop()
 {
     // Check if user tried to close the window
-    while(!glfwWindowShouldClose(m_window))
+    while (!glfwWindowShouldClose(m_window))
     {
         // Poll for window events
         glfwPollEvents();
@@ -59,14 +99,15 @@ void HelloTriangleApp::cleanup()
     glfwTerminate();
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-    HelloTriangleApp app{};
+    HelloTriangleApp app { };
     
-    try{
+    try
+    {
         app.run();
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

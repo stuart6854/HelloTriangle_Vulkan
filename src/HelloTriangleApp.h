@@ -15,9 +15,13 @@ public:
     
 private:
     GLFWwindow* m_window;
+    VkInstance m_instance;
     
     void init_window();
+    
+    void create_vulkan_instance();
     void init_vulkan();
+    
     void main_loop();
     void cleanup();
     
