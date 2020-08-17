@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <vector>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -34,8 +35,30 @@ void HelloTriangleApp::init_window()
     m_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan - Hello Triangle", nullptr, nullptr);
 }
 
+void HelloTriangleApp::list_supported_extensions()
+{
+    // First we need to know how many extensions there are
+    uint32_t extensionCount = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+    
+    // Allocate an array to hold all extensions
+    std::vector<VkExtensionProperties> extensions(extensionCount);
+    
+    // Finally we can query the extension details
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+    
+    std::cout << "Vulkan supported extensions:\n";
+    
+    for(const auto& extension : extensions)
+    {
+        std::cout << '\t' << extension.extensionName << std::endl;
+    }
+}
+
 void HelloTriangleApp::create_vulkan_instance()
 {
+    //list_supported_extensions();
+    
     // Fill a struct with some info about our application. This is technically optional,
     // but may provide some useful information to the driver in order to optimise our
     // specific application.

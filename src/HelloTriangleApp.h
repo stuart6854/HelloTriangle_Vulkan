@@ -19,6 +19,7 @@ private:
     
     void init_window();
     
+    void list_supported_extensions();
     void create_vulkan_instance();
     void init_vulkan();
     
