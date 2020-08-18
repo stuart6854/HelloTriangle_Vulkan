@@ -49,6 +49,9 @@ private:
     VkPipelineLayout m_pipelineLayout;
     VkPipeline m_graphicsPipeline;
     
+    VkCommandPool m_commandPool;
+    std::vector<VkCommandBuffer> m_commandBuffers;
+    
     void init_window();
     
     void create_vulkan_instance();
@@ -68,6 +71,10 @@ private:
     void create_graphics_pipeline();
     
     void create_framebuffers();
+    
+    void create_command_pool();
+    
+    void create_command_buffers();
     
     void init_vulkan();
     
