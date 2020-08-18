@@ -12,6 +12,7 @@
 #include <set>
 #include <cstdint>
 #include <algorithm>
+#include <fstream>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -49,6 +50,27 @@ struct SwapChainSupportDetails
     std::vector<VkSurfaceFormatKHR> formats; // Color Depth
     std::vector<VkPresentModeKHR> presentModes; // Conditions for "swapping" images to the screen
 };
+
+static std::vector<char> readfile(const std::string &filename)
+{
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Failed to open file!");
+    }
+    
+    size_t fileSize = (size_t) file.tellg();
+    std::vector<char> buffer(fileSize);
+    
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+    
+    file.close();
+    
+    return buffer;
+}
+
 
 void HelloTriangleApp::run()
 {
@@ -355,11 +377,41 @@ void HelloTriangleApp::create_image_views()
         createInfo.subresourceRange.baseArrayLayer = 0;
         createInfo.subresourceRange.layerCount = 1;
         
-        if(vkCreateImageView(m_device, &createInfo, nullptr, &m_swapChainImageViews[i]) != VK_SUCCESS)
+        if (vkCreateImageView(m_device, &createInfo, nullptr, &m_swapChainImageViews[i]) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to create the image views!");
         }
     }
+}
+
+void HelloTriangleApp::create_graphics_pipeline()
+{
+    auto vertShaderCode = readfile("shaders/vert.spv");
+    auto fragShaderCode = readfile("shaders/frag.spv");
+    
+    VkShaderModule vertShaderModule = create_shader_module(vertShaderCode);
+    VkShaderModule fragShaderModule = create_shader_module(fragShaderCode);
+    
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo { };
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT; // Which pipeline stage the shader will belong to
+    
+    // Specify the shader module containing the code, and the function to invoke, known as the entrypoint.
+    // This means that its possible to combine multiple fragment shaders into a single shader module and
+    // use different entry points to differentiate between their behaviours.
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
+    
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo { };
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
+    
+    VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+    
+    vkDestroyShaderModule(m_device, vertShaderModule, nullptr);
+    vkDestroyShaderModule(m_device, fragShaderModule, nullptr);
 }
 
 void HelloTriangleApp::init_vulkan()
@@ -370,6 +422,7 @@ void HelloTriangleApp::init_vulkan()
     create_logical_device();
     create_swap_chain();
     create_image_views();
+    create_graphics_pipeline();
 }
 
 void HelloTriangleApp::main_loop()
@@ -385,7 +438,8 @@ void HelloTriangleApp::main_loop()
 void HelloTriangleApp::cleanup()
 {
     // Destroy ImageViews
-    for(auto imageView : m_swapChainImageViews)
+    for (auto imageView : m_swapChainImageViews
+            )
     {
         vkDestroyImageView(m_device, imageView, nullptr);
     }
@@ -627,6 +681,22 @@ VkExtent2D HelloTriangleApp::choose_swap_extent(const VkSurfaceCapabilitiesKHR &
         
         return actualExtent;
     }
+}
+
+VkShaderModule HelloTriangleApp::create_shader_module(const std::vector<char> &code)
+{
+    VkShaderModuleCreateInfo createInfo { };
+    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = code.size();
+    createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
+    
+    VkShaderModule shaderModule;
+    if (vkCreateShaderModule(m_device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create shader module!");
+    }
+    
+    return shaderModule;
 }
 
 int main(int argc, char **argv)

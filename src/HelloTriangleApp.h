@@ -58,6 +58,8 @@ private:
     
     void create_image_views();
     
+    void create_graphics_pipeline();
+    
     void init_vulkan();
     
     void main_loop();
@@ -96,6 +98,8 @@ private:
      * always exactly equal to the resolution of the window that we're drawing to.
      */
     VkExtent2D choose_swap_extent(const VkSurfaceCapabilitiesKHR &capabilities);
+    
+    VkShaderModule create_shader_module(const std::vector<char> &code);
     
 };
 
