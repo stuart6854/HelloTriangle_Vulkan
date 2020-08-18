@@ -73,6 +73,11 @@ static std::vector<char> readfile(const std::string &filename)
     return buffer;
 }
 
+void HelloTriangleApp::framebuffer_resize_callback(GLFWwindow* window, int width, int height)
+{
+    auto app = reinterpret_cast<HelloTriangleApp*>(glfwGetWindowUserPointer(window));
+    app->m_frameBufferResized = true;
+}
 
 void HelloTriangleApp::run()
 {
@@ -81,6 +86,7 @@ void HelloTriangleApp::run()
     main_loop();
     cleanup();
 }
+
 
 void HelloTriangleApp::init_window()
 {
@@ -95,6 +101,9 @@ void HelloTriangleApp::init_window()
     
     // Create GLFW window
     m_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan - Hello Triangle", nullptr, nullptr);
+    
+    glfwSetWindowUserPointer(m_window, this);
+    glfwSetFramebufferSizeCallback(m_window, framebuffer_resize_callback);
 }
 
 void HelloTriangleApp::create_vulkan_instance()
@@ -726,7 +735,20 @@ void HelloTriangleApp::draw_frame()
     vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
     
     uint32_t imageIndex = 0;
-    vkAcquireNextImageKHR(m_device, m_swapChain, UINT64_MAX, m_imageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(m_device, m_swapChain, UINT64_MAX, m_imageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex);
+    
+    if(result == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        // The swap chain has become incompatible with the surface
+        // and can no longer be used for rendering.
+        // Usually happens after window resize.
+        recreate_swap_chain();
+        return;
+    }
+    else if(result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+    {
+        throw std::runtime_error("Failed to acquire swap chain image!");
+    }
     
     // Check if a previous frame is using this image (ie. there is its fence to wait on)
     if(m_imagesInFlight[imageIndex] != VK_NULL_HANDLE)
@@ -771,7 +793,17 @@ void HelloTriangleApp::draw_frame()
     presentInfo.pSwapchains = swapChains;
     presentInfo.pImageIndices = &imageIndex;
     
-    vkQueuePresentKHR(m_presentQueue, &presentInfo);
+    result = vkQueuePresentKHR(m_presentQueue, &presentInfo);
+    
+    if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_frameBufferResized)
+    {
+        m_frameBufferResized = false;
+        recreate_swap_chain();
+    }
+    else if(result != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to present swap chain image!");
+    }
     
     m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
@@ -790,10 +822,34 @@ void HelloTriangleApp::main_loop()
     vkDeviceWaitIdle(m_device);
 }
 
+void HelloTriangleApp::cleanup_swap_chain()
+{
+    for (auto framebuffer : m_swapChainFramebuffers)
+    {
+        vkDestroyFramebuffer(m_device, framebuffer, nullptr);
+    }
+    
+    vkFreeCommandBuffers(m_device, m_commandPool, static_cast<uint32_t>(m_commandBuffers.size()), m_commandBuffers.data());
+    
+    vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
+    vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
+    vkDestroyRenderPass(m_device, m_renderPass, nullptr);
+    
+    // Destroy ImageViews
+    for (auto imageView : m_swapChainImageViews)
+    {
+        vkDestroyImageView(m_device, imageView, nullptr);
+    }
+    
+    // Destroy Swap Chain
+    vkDestroySwapchainKHR(m_device, m_swapChain, nullptr);
+}
+
 void HelloTriangleApp::cleanup()
 {
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++
-            )
+    cleanup_swap_chain();
+    
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         vkDestroySemaphore(m_device, m_imageAvailableSemaphores[i], nullptr);
         vkDestroySemaphore(m_device, m_renderFinishedSemaphores[i], nullptr);
@@ -801,26 +857,6 @@ void HelloTriangleApp::cleanup()
     }
     
     vkDestroyCommandPool(m_device, m_commandPool, nullptr);
-    
-    for (auto framebuffer : m_swapChainFramebuffers
-            )
-    {
-        vkDestroyFramebuffer(m_device, framebuffer, nullptr);
-    }
-    
-    vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
-    vkDestroyRenderPass(m_device, m_renderPass, nullptr);
-    
-    // Destroy ImageViews
-    for (auto imageView : m_swapChainImageViews
-            )
-    {
-        vkDestroyImageView(m_device, imageView, nullptr);
-    }
-    
-    // Destroy Swap Chain
-    vkDestroySwapchainKHR(m_device, m_swapChain, nullptr);
     
     // Destroy logical device
     vkDestroyDevice(m_device, nullptr);
@@ -838,6 +874,32 @@ void HelloTriangleApp::cleanup()
     glfwTerminate();
 }
 
+
+void HelloTriangleApp::recreate_swap_chain()
+{
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(m_window, &width, &height);
+    while(width == 0 || height == 0)
+    {
+        glfwGetFramebufferSize(m_window, &width, &height);
+        glfwWaitEvents();
+    }
+    
+    // We don't want to touch resources still in use
+    vkDeviceWaitIdle(m_device);
+    
+    cleanup_swap_chain();
+    
+    create_swap_chain();
+    create_image_views(); // Based on swap chain
+    create_render_pass(); // Depends on swap chain image formats
+    // Pipeline must be rebuilt because Viewport and Scissor rectangle
+    // size are specified during graphics pipeline creation.
+    // Note: Could be avoided by using dynamic state for the viewports and scissor rectangles.
+    create_graphics_pipeline();
+    create_framebuffers(); // Depends on swap chain images
+    create_command_buffers(); // Depends on swap chain images
+}
 
 bool HelloTriangleApp::check_validation_layer_support()
 {
@@ -1048,7 +1110,13 @@ VkExtent2D HelloTriangleApp::choose_swap_extent(const VkSurfaceCapabilitiesKHR &
     }
     else
     {
-        VkExtent2D actualExtent = { WIDTH, HEIGHT };
+        int width, height;
+        glfwGetFramebufferSize(m_window, &width, &height);
+        
+        VkExtent2D actualExtent = {
+                static_cast<uint32_t>(width),
+                static_cast<uint32_t>(height)
+        };
         
         // Use Min/Max to clamp the values between the allowed minimum and maximum extents that are supported
         actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));

@@ -58,6 +58,10 @@ private:
     std::vector<VkFence> m_imagesInFlight;
     size_t m_currentFrame = 0;
     
+    bool m_frameBufferResized = false;
+    
+    static void framebuffer_resize_callback(GLFWwindow* window, int width, int height);
+    
     void init_window();
     
     void create_vulkan_instance();
@@ -91,8 +95,12 @@ private:
     
     void main_loop();
     
+    void cleanup_swap_chain();
+    
     void cleanup();
     
+    
+    void recreate_swap_chain();
     
     /* Checks if all of the requested layers are available */
     static bool check_validation_layer_support();
