@@ -52,6 +52,12 @@ private:
     VkCommandPool m_commandPool;
     std::vector<VkCommandBuffer> m_commandBuffers;
     
+    std::vector<VkSemaphore> m_imageAvailableSemaphores;
+    std::vector<VkSemaphore> m_renderFinishedSemaphores;
+    std::vector<VkFence> m_inFlightFences;
+    std::vector<VkFence> m_imagesInFlight;
+    size_t m_currentFrame = 0;
+    
     void init_window();
     
     void create_vulkan_instance();
@@ -76,7 +82,12 @@ private:
     
     void create_command_buffers();
     
+    void create_sync_objects();
+    
     void init_vulkan();
+    
+    
+    void draw_frame();
     
     void main_loop();
     
