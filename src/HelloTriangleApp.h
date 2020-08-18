@@ -44,6 +44,7 @@ private:
     
     std::vector<VkImageView> m_swapChainImageViews;
     
+    VkRenderPass m_renderPass;
     VkPipelineLayout m_pipelineLayout;
     
     void init_window();
@@ -61,6 +62,8 @@ private:
     void create_image_views();
     
     void create_graphics_pipeline();
+    
+    void create_render_pass();
     
     void init_vulkan();
     
