@@ -14,6 +14,8 @@
 #include <algorithm>
 #include <fstream>
 
+#include <glm/glm.hpp>
+
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
@@ -53,6 +55,49 @@ struct SwapChainSupportDetails
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
+struct Vertex
+{
+    glm::vec2 pos;
+    glm::vec3 color;
+    
+    static VkVertexInputBindingDescription get_binding_description()
+    {
+        VkVertexInputBindingDescription bindingDesc { };
+        bindingDesc.binding = 0;
+        bindingDesc.stride = sizeof(Vertex); // Bytes from one entry to the next
+        
+        // VK_VERTEX_INPUT_RATE_VERTEX = Move to the next data entry after each vertex
+        // VK_VERTEX_INPUT_RATE_INSTANCE = Move to the next data entry after each instance
+        bindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        
+        return bindingDesc;
+    }
+    
+    static std::array<VkVertexInputAttributeDescription, 2> get_attrib_descriptions()
+    {
+        std::array<VkVertexInputAttributeDescription, 2> attribDescriptions { };
+        
+        attribDescriptions[0].binding = 0;
+        attribDescriptions[0].location = 0;
+        attribDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attribDescriptions[0].offset = offsetof(Vertex, pos);
+        
+        attribDescriptions[1].binding = 0;
+        attribDescriptions[1].location = 1;
+        attribDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attribDescriptions[1].offset = offsetof(Vertex, color);
+        
+        return attribDescriptions;
+    }
+};
+
+const std::vector<Vertex> vertices =
+        {
+                {{ 0.0f,  -0.5f }, { 1.0f, 0.0f, 0.0f }},
+                {{ 0.5f,  0.5f },  { 0.0f, 1.0f, 0.0f }},
+                {{ -0.5f, 0.5f },  { 0.0f, 0.0f, 1.0f }}
+        };
+
 static std::vector<char> readfile(const std::string &filename)
 {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -73,9 +118,9 @@ static std::vector<char> readfile(const std::string &filename)
     return buffer;
 }
 
-void HelloTriangleApp::framebuffer_resize_callback(GLFWwindow* window, int width, int height)
+void HelloTriangleApp::framebuffer_resize_callback(GLFWwindow *window, int width, int height)
 {
-    auto app = reinterpret_cast<HelloTriangleApp*>(glfwGetWindowUserPointer(window));
+    auto app = reinterpret_cast<HelloTriangleApp *>(glfwGetWindowUserPointer(window));
     app->m_frameBufferResized = true;
 }
 
@@ -485,10 +530,14 @@ void HelloTriangleApp::create_graphics_pipeline()
     // Vertex Input
     VkPipelineVertexInputStateCreateInfo vertexInputInfo { };
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.pVertexBindingDescriptions = nullptr;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+    
+    auto bindingDescription = Vertex::get_binding_description();
+    auto attribDescriptions = Vertex::get_attrib_descriptions();
+    
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribDescriptions.size());
+    vertexInputInfo.pVertexAttributeDescriptions = attribDescriptions.data();
     
     // Input Assembly
     VkPipelineInputAssemblyStateCreateInfo inputAssembly { };
@@ -737,7 +786,7 @@ void HelloTriangleApp::draw_frame()
     uint32_t imageIndex = 0;
     VkResult result = vkAcquireNextImageKHR(m_device, m_swapChain, UINT64_MAX, m_imageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex);
     
-    if(result == VK_ERROR_OUT_OF_DATE_KHR)
+    if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         // The swap chain has become incompatible with the surface
         // and can no longer be used for rendering.
@@ -745,13 +794,13 @@ void HelloTriangleApp::draw_frame()
         recreate_swap_chain();
         return;
     }
-    else if(result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
     {
         throw std::runtime_error("Failed to acquire swap chain image!");
     }
     
     // Check if a previous frame is using this image (ie. there is its fence to wait on)
-    if(m_imagesInFlight[imageIndex] != VK_NULL_HANDLE)
+    if (m_imagesInFlight[imageIndex] != VK_NULL_HANDLE)
     {
         vkWaitForFences(m_device, 1, &m_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
@@ -795,12 +844,12 @@ void HelloTriangleApp::draw_frame()
     
     result = vkQueuePresentKHR(m_presentQueue, &presentInfo);
     
-    if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_frameBufferResized)
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_frameBufferResized)
     {
         m_frameBufferResized = false;
         recreate_swap_chain();
     }
-    else if(result != VK_SUCCESS)
+    else if (result != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to present swap chain image!");
     }
@@ -824,7 +873,8 @@ void HelloTriangleApp::main_loop()
 
 void HelloTriangleApp::cleanup_swap_chain()
 {
-    for (auto framebuffer : m_swapChainFramebuffers)
+    for (auto framebuffer : m_swapChainFramebuffers
+            )
     {
         vkDestroyFramebuffer(m_device, framebuffer, nullptr);
     }
@@ -836,7 +886,8 @@ void HelloTriangleApp::cleanup_swap_chain()
     vkDestroyRenderPass(m_device, m_renderPass, nullptr);
     
     // Destroy ImageViews
-    for (auto imageView : m_swapChainImageViews)
+    for (auto imageView : m_swapChainImageViews
+            )
     {
         vkDestroyImageView(m_device, imageView, nullptr);
     }
@@ -849,7 +900,8 @@ void HelloTriangleApp::cleanup()
 {
     cleanup_swap_chain();
     
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++
+            )
     {
         vkDestroySemaphore(m_device, m_imageAvailableSemaphores[i], nullptr);
         vkDestroySemaphore(m_device, m_renderFinishedSemaphores[i], nullptr);
@@ -879,7 +931,7 @@ void HelloTriangleApp::recreate_swap_chain()
 {
     int width = 0, height = 0;
     glfwGetFramebufferSize(m_window, &width, &height);
-    while(width == 0 || height == 0)
+    while (width == 0 || height == 0)
     {
         glfwGetFramebufferSize(m_window, &width, &height);
         glfwWaitEvents();
