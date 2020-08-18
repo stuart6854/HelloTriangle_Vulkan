@@ -388,7 +388,7 @@ void HelloTriangleApp::create_render_pass()
 {
     /* Attachment Description */
     
-    VkAttachmentDescription colorAttachment{};
+    VkAttachmentDescription colorAttachment { };
     colorAttachment.format = m_swapChainImageFormat; // Should match the format of the swap chain images
     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     
@@ -405,24 +405,24 @@ void HelloTriangleApp::create_render_pass()
     
     /* Subpasses & Attachment References */
     
-    VkAttachmentReference colorAttachmentRef{};
+    VkAttachmentReference colorAttachmentRef { };
     colorAttachmentRef.attachment = 0; // Which attachment to reference by its index in the attachment descriptions array
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     
-    VkSubpassDescription subpass{};
+    VkSubpassDescription subpass { };
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
     
     /* Render Pass */
-    VkRenderPassCreateInfo renderPassInfo{};
+    VkRenderPassCreateInfo renderPassInfo { };
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = 1;
     renderPassInfo.pAttachments = &colorAttachment;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
     
-    if(vkCreateRenderPass(m_device, &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS)
+    if (vkCreateRenderPass(m_device, &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create render pass!");
     }
@@ -459,7 +459,7 @@ void HelloTriangleApp::create_graphics_pipeline()
     /* Fixed Function Pipeline Stages */
     
     // Vertex Input
-    VkPipelineVertexInputStateCreateInfo  vertexInputInfo{};
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo { };
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 0;
     vertexInputInfo.pVertexBindingDescriptions = nullptr;
@@ -467,25 +467,25 @@ void HelloTriangleApp::create_graphics_pipeline()
     vertexInputInfo.pVertexAttributeDescriptions = nullptr;
     
     // Input Assembly
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly { };
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
     
     // Viewport and Scissors
-    VkViewport  viewport{};
+    VkViewport viewport { };
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)m_swapChainExtent.width;
-    viewport.height = (float)m_swapChainExtent.height;
+    viewport.width = (float) m_swapChainExtent.width;
+    viewport.height = (float) m_swapChainExtent.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     
-    VkRect2D scissor{};
-    scissor.offset = {0, 0};
+    VkRect2D scissor { };
+    scissor.offset = { 0, 0 };
     scissor.extent = m_swapChainExtent;
     
-    VkPipelineViewportStateCreateInfo viewportState{};
+    VkPipelineViewportStateCreateInfo viewportState { };
     viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewportState.viewportCount = 1;
     viewportState.pViewports = &viewport;
@@ -493,7 +493,7 @@ void HelloTriangleApp::create_graphics_pipeline()
     viewportState.pScissors = &scissor;
     
     // Rasterizer
-    VkPipelineRasterizationStateCreateInfo rasterizer{};
+    VkPipelineRasterizationStateCreateInfo rasterizer { };
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.depthClampEnable = VK_FALSE; // Should clamp fragments beyond near/far planes?
     rasterizer.rasterizerDiscardEnable = VK_FALSE; // Should disable any output to framebuffer?
@@ -504,7 +504,7 @@ void HelloTriangleApp::create_graphics_pipeline()
     rasterizer.depthBiasEnable = VK_FALSE; // The rasterizer can alter depth values by adding a constant value or biasing them based on the fragments slope.
     
     //Multisampling
-    VkPipelineMultisampleStateCreateInfo multisampling{};
+    VkPipelineMultisampleStateCreateInfo multisampling { };
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
     multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -512,11 +512,11 @@ void HelloTriangleApp::create_graphics_pipeline()
     // Depth and Stencil Testing
     
     // Color Blending
-    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    VkPipelineColorBlendAttachmentState colorBlendAttachment { };
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable = VK_FALSE;
     
-    VkPipelineColorBlendStateCreateInfo  colorBlending{};
+    VkPipelineColorBlendStateCreateInfo colorBlending { };
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlending.logicOpEnable = VK_FALSE;
     colorBlending.attachmentCount = 1;
@@ -525,17 +525,17 @@ void HelloTriangleApp::create_graphics_pipeline()
     // Dynamic State
     
     // Pipeline Layout
-    VkPipelineLayoutCreateInfo  pipelineLayoutInfo{};
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo { };
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     
-    if(vkCreatePipelineLayout(m_device, &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS)
+    if (vkCreatePipelineLayout(m_device, &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create pipeline layout!");
     }
     
     /* Create Pipeline */
     
-    VkGraphicsPipelineCreateInfo pipelineInfo{};
+    VkGraphicsPipelineCreateInfo pipelineInfo { };
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineInfo.stageCount = 2;
     pipelineInfo.pStages = shaderStages;
@@ -548,7 +548,7 @@ void HelloTriangleApp::create_graphics_pipeline()
     pipelineInfo.pDepthStencilState = nullptr;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = nullptr;
-
+    
     pipelineInfo.layout = m_pipelineLayout;
     
     pipelineInfo.renderPass = m_renderPass;
@@ -558,13 +558,39 @@ void HelloTriangleApp::create_graphics_pipeline()
 //    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 //    pipelineInfo.basePipelineIndex = -1;
     
-    if(vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_graphicsPipeline) != VK_SUCCESS)
+    if (vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_graphicsPipeline) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create graphics pipeline!");
     }
-
+    
     vkDestroyShaderModule(m_device, vertShaderModule, nullptr);
     vkDestroyShaderModule(m_device, fragShaderModule, nullptr);
+}
+
+void HelloTriangleApp::create_framebuffers()
+{
+    m_swapChainFramebuffers.resize(m_swapChainImageViews.size());
+    for (size_t i = 0; i < m_swapChainImageViews.size(); i++
+            )
+    {
+        VkImageView attachments[] = {
+                m_swapChainImageViews[i]
+        };
+        
+        VkFramebufferCreateInfo framebufferInfo { };
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = m_renderPass;
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments = attachments;
+        framebufferInfo.width = m_swapChainExtent.width;
+        framebufferInfo.height = m_swapChainExtent.height;
+        framebufferInfo.layers = 1;
+        
+        if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, &m_swapChainFramebuffers[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create framebuffer!");
+        }
+    }
 }
 
 void HelloTriangleApp::init_vulkan()
@@ -577,6 +603,7 @@ void HelloTriangleApp::init_vulkan()
     create_image_views();
     create_render_pass();
     create_graphics_pipeline();
+    create_framebuffers();
 }
 
 void HelloTriangleApp::main_loop()
@@ -591,6 +618,12 @@ void HelloTriangleApp::main_loop()
 
 void HelloTriangleApp::cleanup()
 {
+    for (auto framebuffer : m_swapChainFramebuffers
+            )
+    {
+        vkDestroyFramebuffer(m_device, framebuffer, nullptr);
+    }
+    
     vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
     vkDestroyRenderPass(m_device, m_renderPass, nullptr);

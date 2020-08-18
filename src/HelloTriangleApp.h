@@ -43,6 +43,7 @@ private:
     VkExtent2D m_swapChainExtent;
     
     std::vector<VkImageView> m_swapChainImageViews;
+    std::vector<VkFramebuffer> m_swapChainFramebuffers;
     
     VkRenderPass m_renderPass;
     VkPipelineLayout m_pipelineLayout;
@@ -65,6 +66,8 @@ private:
     void create_render_pass();
     
     void create_graphics_pipeline();
+    
+    void create_framebuffers();
     
     void init_vulkan();
     
