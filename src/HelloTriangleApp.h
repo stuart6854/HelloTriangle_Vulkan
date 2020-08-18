@@ -8,6 +8,13 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+// TODO: Look into Validation Layers
+// TODO: Look into Extensions
+// TODO: Look into Queue Families
+// TODO: Look into Physical Devices
+// TODO: Look into Physical Device Features
+// TODO: Look into Logical Devices
+
 struct QueueFamilyIndices;
 
 class HelloTriangleApp
@@ -18,6 +25,9 @@ public:
 private:
     GLFWwindow* m_window;
     VkInstance m_instance;
+    VkPhysicalDevice physicalDevice;
+    VkDevice m_device;
+    VkQueue m_graphicsQueue;
     
     void init_window();
     
@@ -28,6 +38,7 @@ private:
     void create_vulkan_instance();
     static bool is_device_suitable(VkPhysicalDevice device);
     void pick_physical_device();
+    void create_logical_device();
     void init_vulkan();
     
     void main_loop();

@@ -174,23 +174,24 @@ void HelloTriangleApp::create_vulkan_instance()
 
 QueueFamilyIndices HelloTriangleApp::find_queue_families(VkPhysicalDevice device)
 {
-    QueueFamilyIndices indices{};
+    QueueFamilyIndices indices { };
     
-    uint32_t  queueFamilyCount = 0;
+    uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
     
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
     
     int i = 0;
-    for(const auto& queueFamily : queueFamilies)
+    for (const auto &queueFamily : queueFamilies
+            )
     {
-        if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
         {
             indices.graphicsFamily = i;
         }
         
-        if(indices.is_complete())
+        if (indices.is_complete())
         {
             break;
         }
@@ -229,7 +230,7 @@ void HelloTriangleApp::pick_physical_device()
     // The graphics card we select will be stored in a 'VkPhysicalDevice' handle.
     // This object will be implicitly destroyed when the 'VkInstance' is destroyed,
     // so we don't need to do it ourselves in cleanup().
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    physicalDevice = VK_NULL_HANDLE;
     
     // Listing the graphics card is very similar to listing extensions and
     // starts with querying just the number
@@ -265,10 +266,67 @@ void HelloTriangleApp::pick_physical_device()
     
 }
 
+void HelloTriangleApp::create_logical_device()
+{
+    QueueFamilyIndices indices = find_queue_families(physicalDevice);
+    
+    // This structure describes the number of queues we
+    // want for a single queue family
+    VkDeviceQueueCreateInfo queueCreateInfo { };
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+    queueCreateInfo.queueCount = 1;
+    
+    // Vulkan lets you assign priorities to queues to influence the scheduling
+    // of command buffer execution using floating point numbers between 0.0 and 1.0,
+    // This is required even if there is only a single queue.
+    float queuePriority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+    
+    // Next we need to specify the set of device features we'll be using.
+    // These were queries for earlier with vkGetPhysicalDeviceFeatures()
+    VkPhysicalDeviceFeatures deviceFeatures { };
+    
+    VkDeviceCreateInfo createInfo { };
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    // First add pointers to the queue creation info and device features structs
+    createInfo.pQueueCreateInfos = &queueCreateInfo;
+    createInfo.queueCreateInfoCount = 1;
+    createInfo.pEnabledFeatures = &deviceFeatures;
+    
+    // The remainder of the information bears resemblance to VkInstanceCreateInfo
+    // struct and requires you to specify extensions and validation layers.
+    // The difference is that these are device specific this time.
+    // NOTE: Newer versions of Vulkan removed the distinction between Instance and Device specific validation layers.
+    //       This means that the enabledLayerCount and ppEnabledLayerNames fields of VkCreateInfo are ignored by
+    //       up-to-date implementations. However, it is still a good idea to set them anyway to be compatible with
+    //       older implementations.
+    createInfo.enabledExtensionCount = 0;
+    
+    if(ENABLE_VALIDATION_LAYERS)
+    {
+        createInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
+        createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
+    }
+    else
+    {
+        createInfo.enabledLayerCount = 0;
+    }
+    
+    // Instantiate the Logical Device
+    if(vkCreateDevice(physicalDevice, &createInfo, nullptr, &m_device) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create Logical Device!");
+    }
+    
+    vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &m_graphicsQueue);
+}
+
 void HelloTriangleApp::init_vulkan()
 {
     create_vulkan_instance();
     pick_physical_device();
+    create_logical_device();
 }
 
 void HelloTriangleApp::main_loop()
@@ -283,6 +341,9 @@ void HelloTriangleApp::main_loop()
 
 void HelloTriangleApp::cleanup()
 {
+    // Destroy logical device
+    vkDestroyDevice(m_device, nullptr);
+    
     // Destroy Vulkan instance
     vkDestroyInstance(m_instance, nullptr);
     
