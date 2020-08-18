@@ -10,7 +10,7 @@
 #include <vector>
 #include <cstring>
 #include <optional>
-
+#include <set>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -29,10 +29,11 @@ const bool ENABLE_VALIDATION_LAYERS = true;
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
+    std::optional<uint32_t> presentFamily;
     
-    bool is_complete()
+    bool is_complete() const
     {
-        return graphicsFamily.has_value();
+        return graphicsFamily.has_value() && presentFamily.has_value();
     }
 };
 
@@ -172,6 +173,14 @@ void HelloTriangleApp::create_vulkan_instance()
     }
 }
 
+void HelloTriangleApp::create_surface()
+{
+    if(glfwCreateWindowSurface(m_instance, m_window, nullptr, &m_surface) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create window surface!");
+    }
+}
+
 QueueFamilyIndices HelloTriangleApp::find_queue_families(VkPhysicalDevice device)
 {
     QueueFamilyIndices indices { };
@@ -189,6 +198,14 @@ QueueFamilyIndices HelloTriangleApp::find_queue_families(VkPhysicalDevice device
         if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
         {
             indices.graphicsFamily = i;
+        }
+        
+        VkBool32  presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_surface, &presentSupport);
+        
+        if(presentSupport)
+        {
+            indices.presentFamily = i;
         }
         
         if (indices.is_complete())
@@ -270,18 +287,21 @@ void HelloTriangleApp::create_logical_device()
 {
     QueueFamilyIndices indices = find_queue_families(physicalDevice);
     
-    // This structure describes the number of queues we
-    // want for a single queue family
-    VkDeviceQueueCreateInfo queueCreateInfo { };
-    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
-    queueCreateInfo.queueCount = 1;
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value()};
     
-    // Vulkan lets you assign priorities to queues to influence the scheduling
-    // of command buffer execution using floating point numbers between 0.0 and 1.0,
-    // This is required even if there is only a single queue.
     float queuePriority = 1.0f;
-    queueCreateInfo.pQueuePriorities = &queuePriority;
+    for(uint32_t queueFamily : uniqueQueueFamilies)
+    {
+        // This structure describes the number of queues we
+        // want for a single queue family
+        VkDeviceQueueCreateInfo queueCreateInfo{};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = queueFamily;
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
     
     // Next we need to specify the set of device features we'll be using.
     // These were queries for earlier with vkGetPhysicalDeviceFeatures()
@@ -290,8 +310,8 @@ void HelloTriangleApp::create_logical_device()
     VkDeviceCreateInfo createInfo { };
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     // First add pointers to the queue creation info and device features structs
-    createInfo.pQueueCreateInfos = &queueCreateInfo;
-    createInfo.queueCreateInfoCount = 1;
+    createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+    createInfo.pQueueCreateInfos = queueCreateInfos.data();
     createInfo.pEnabledFeatures = &deviceFeatures;
     
     // The remainder of the information bears resemblance to VkInstanceCreateInfo
@@ -320,11 +340,13 @@ void HelloTriangleApp::create_logical_device()
     }
     
     vkGetDeviceQueue(m_device, indices.graphicsFamily.value(), 0, &m_graphicsQueue);
+    vkGetDeviceQueue(m_device, indices.presentFamily.value(), 0, &m_presentQueue);
 }
 
 void HelloTriangleApp::init_vulkan()
 {
     create_vulkan_instance();
+    create_surface();
     pick_physical_device();
     create_logical_device();
 }
@@ -343,6 +365,9 @@ void HelloTriangleApp::cleanup()
 {
     // Destroy logical device
     vkDestroyDevice(m_device, nullptr);
+    
+    // Destroy the window surface
+    vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
     
     // Destroy Vulkan instance
     vkDestroyInstance(m_instance, nullptr);

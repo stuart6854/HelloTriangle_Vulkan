@@ -14,6 +14,7 @@
 // TODO: Look into Physical Devices
 // TODO: Look into Physical Device Features
 // TODO: Look into Logical Devices
+// TODO: Look into Surfaces
 
 struct QueueFamilyIndices;
 
@@ -29,14 +30,18 @@ private:
     VkDevice m_device;
     VkQueue m_graphicsQueue;
     
+    VkSurfaceKHR m_surface;
+    VkQueue m_presentQueue;
+    
     void init_window();
     
     /* Checks if all of the requested layers are available */
     static bool check_validation_layer_support();
     static void list_supported_extensions();
-    static QueueFamilyIndices find_queue_families(VkPhysicalDevice device);
+    QueueFamilyIndices find_queue_families(VkPhysicalDevice device);
     void create_vulkan_instance();
-    static bool is_device_suitable(VkPhysicalDevice device);
+    void create_surface();
+    bool is_device_suitable(VkPhysicalDevice device);
     void pick_physical_device();
     void create_logical_device();
     void init_vulkan();
