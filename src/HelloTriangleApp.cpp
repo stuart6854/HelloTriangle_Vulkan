@@ -384,6 +384,50 @@ void HelloTriangleApp::create_image_views()
     }
 }
 
+void HelloTriangleApp::create_render_pass()
+{
+    /* Attachment Description */
+    
+    VkAttachmentDescription colorAttachment{};
+    colorAttachment.format = m_swapChainImageFormat; // Should match the format of the swap chain images
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    
+    // What to do with the color/depth data in the attachment before/after rendering
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    
+    // What to do with the stencil data in the attachment before/after rendering
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;  // WHat layout to have before the render pass begins
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // What layout to automatically transition to once the render pass finishes
+    
+    /* Subpasses & Attachment References */
+    
+    VkAttachmentReference colorAttachmentRef{};
+    colorAttachmentRef.attachment = 0; // Which attachment to reference by its index in the attachment descriptions array
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;
+    
+    /* Render Pass */
+    VkRenderPassCreateInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = &colorAttachment;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+    
+    if(vkCreateRenderPass(m_device, &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create render pass!");
+    }
+}
+
 void HelloTriangleApp::create_graphics_pipeline()
 {
     /* Programmable Pipeline Stages */
@@ -445,7 +489,7 @@ void HelloTriangleApp::create_graphics_pipeline()
     viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewportState.viewportCount = 1;
     viewportState.pViewports = &viewport;
-    viewportState.viewportCount = 1;
+    viewportState.scissorCount = 1;
     viewportState.pScissors = &scissor;
     
     // Rasterizer
@@ -489,53 +533,38 @@ void HelloTriangleApp::create_graphics_pipeline()
         throw std::runtime_error("Failed to create pipeline layout!");
     }
     
+    /* Create Pipeline */
     
+    VkGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+    
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pDepthStencilState = nullptr;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.pDynamicState = nullptr;
+
+    pipelineInfo.layout = m_pipelineLayout;
+    
+    pipelineInfo.renderPass = m_renderPass;
+    pipelineInfo.subpass = 0; // Index of the subpass where this graphics pipeline will be used
+    
+    // Vulkan allows you to create a new graphics pipeline by deriving from an existing pipeline
+//    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+//    pipelineInfo.basePipelineIndex = -1;
+    
+    if(vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_graphicsPipeline) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create graphics pipeline!");
+    }
+
     vkDestroyShaderModule(m_device, vertShaderModule, nullptr);
     vkDestroyShaderModule(m_device, fragShaderModule, nullptr);
-}
-
-void HelloTriangleApp::create_render_pass()
-{
-    /* Attachment Description */
-    
-    VkAttachmentDescription colorAttachment{};
-    colorAttachment.format = m_swapChainImageFormat; // Should match the format of the swap chain images
-    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    
-    // What to do with the color/depth data in the attachment before/after rendering
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    
-    // What to do with the stencil data in the attachment before/after rendering
-    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    
-    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;  // WHat layout to have before the render pass begins
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // What layout to automatically transition to once the render pass finishes
-    
-    /* Subpasses & Attachment References */
-    
-    VkAttachmentReference colorAttachmentRef{};
-    colorAttachmentRef.attachment = 0; // Which attachment to reference by its index in the attachment descriptions array
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    
-    VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &colorAttachmentRef;
-    
-    /* Render Pass */
-    VkRenderPassCreateInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 1;
-    renderPassInfo.pAttachments = &colorAttachment;
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpass;
-    
-    if(vkCreateRenderPass(m_device, &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to create render pass!");
-    }
 }
 
 void HelloTriangleApp::init_vulkan()
@@ -546,8 +575,8 @@ void HelloTriangleApp::init_vulkan()
     create_logical_device();
     create_swap_chain();
     create_image_views();
-    create_graphics_pipeline();
     create_render_pass();
+    create_graphics_pipeline();
 }
 
 void HelloTriangleApp::main_loop()
@@ -562,6 +591,7 @@ void HelloTriangleApp::main_loop()
 
 void HelloTriangleApp::cleanup()
 {
+    vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
     vkDestroyRenderPass(m_device, m_renderPass, nullptr);
     

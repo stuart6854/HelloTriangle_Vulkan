@@ -46,6 +46,7 @@ private:
     
     VkRenderPass m_renderPass;
     VkPipelineLayout m_pipelineLayout;
+    VkPipeline m_graphicsPipeline;
     
     void init_window();
     
@@ -61,9 +62,9 @@ private:
     
     void create_image_views();
     
-    void create_graphics_pipeline();
-    
     void create_render_pass();
+    
+    void create_graphics_pipeline();
     
     void init_vulkan();
     
