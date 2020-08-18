@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <vector>
 #include <cstring>
+#include <optional>
+
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -19,10 +21,20 @@ const std::vector<const char *> VALIDATION_LAYERS =
         };
 
 #ifdef NDEBUG
-    const bool ENABLE_VALIDATION_LAYERS = false;
+const bool ENABLE_VALIDATION_LAYERS = false;
 #else
-    const bool ENABLE_VALIDATION_LAYERS = true;
+const bool ENABLE_VALIDATION_LAYERS = true;
 #endif
+
+struct QueueFamilyIndices
+{
+    std::optional<uint32_t> graphicsFamily;
+    
+    bool is_complete()
+    {
+        return graphicsFamily.has_value();
+    }
+};
 
 void HelloTriangleApp::run()
 {
@@ -60,20 +72,22 @@ bool HelloTriangleApp::check_validation_layer_support()
     vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
     
     // Now check if all the layers in VALIDATION_LAYERS exists in the availableLayers list.
-    for(const char* layerName : VALIDATION_LAYERS)
+    for (const char *layerName : VALIDATION_LAYERS
+            )
     {
         bool layerFound = false;
         
-        for(const auto& layerProperties : availableLayers)
+        for (const auto &layerProperties : availableLayers
+                )
         {
-            if(strcmp(layerName, layerProperties.layerName) == 0)
+            if (strcmp(layerName, layerProperties.layerName) == 0)
             {
                 layerFound = true;
                 break;
             }
         }
         
-        if(!layerFound)
+        if (!layerFound)
         {
             return false;
         }
@@ -105,7 +119,7 @@ void HelloTriangleApp::list_supported_extensions()
 
 void HelloTriangleApp::create_vulkan_instance()
 {
-    if(ENABLE_VALIDATION_LAYERS && !check_validation_layer_support())
+    if (ENABLE_VALIDATION_LAYERS && !check_validation_layer_support())
     {
         throw std::runtime_error("Vulkan validation layers requested, but not available!");
     }
@@ -141,7 +155,7 @@ void HelloTriangleApp::create_vulkan_instance()
     createInfo.ppEnabledExtensionNames = glfwExtensions;
     
     // What global validation layers to enable
-    if(ENABLE_VALIDATION_LAYERS)
+    if (ENABLE_VALIDATION_LAYERS)
     {
         createInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
         createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
@@ -158,11 +172,104 @@ void HelloTriangleApp::create_vulkan_instance()
     }
 }
 
+QueueFamilyIndices HelloTriangleApp::find_queue_families(VkPhysicalDevice device)
+{
+    QueueFamilyIndices indices{};
+    
+    uint32_t  queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+    
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+    
+    int i = 0;
+    for(const auto& queueFamily : queueFamilies)
+    {
+        if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        {
+            indices.graphicsFamily = i;
+        }
+        
+        if(indices.is_complete())
+        {
+            break;
+        }
+        
+        i++;
+    }
+    
+    return indices;
+}
+
+bool HelloTriangleApp::is_device_suitable(VkPhysicalDevice device)
+{
+    // To evaluate the suitability of a device we start by querying for some details.
+    // Basic device properties like the name, type and supported Vulkan version can
+    // be queried using vkGetPhysicalDeviceProperties()
+//    VkPhysicalDeviceProperties deviceProperties;
+//    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    
+    // The support for optional features like texture compression, 64bit floats and multi-viewport
+    // rendering (useful for VR) can be queried using vkGetPhysicalDeviceFeatures()
+//    VkPhysicalDeviceFeatures deviceFeatures;
+//    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+    
+    QueueFamilyIndices indices = find_queue_families(device);
+    
+    return indices.is_complete();
+}
+
+void HelloTriangleApp::pick_physical_device()
+{
+    // After initialising Vulkan, we need to look for and select
+    // a graphics card in the system that supports the features we need.
+    // In fact we can select any number of graphics cards and use them simultaneously,
+    // but here we will stick with the first graphics card.
+    
+    // The graphics card we select will be stored in a 'VkPhysicalDevice' handle.
+    // This object will be implicitly destroyed when the 'VkInstance' is destroyed,
+    // so we don't need to do it ourselves in cleanup().
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    
+    // Listing the graphics card is very similar to listing extensions and
+    // starts with querying just the number
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(m_instance, &deviceCount, nullptr);
+    
+    // If there are 0 devices with Vulkan support then there is no point in continuing
+    if (deviceCount == 0)
+    {
+        throw std::runtime_error("Failed to find GPUs with Vulkan support!");
+    }
+    
+    // Otherwise we can now allocate an array to hold all the 'VkPhysicalDevice' handles
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(m_instance, &deviceCount, devices.data());
+    
+    // Now we evaluate each of them and check if they are suitable for the operations
+    // we want to perform, because not all graphics cards are created equal.
+    for (const auto &device : devices
+            )
+    {
+        if (is_device_suitable(device))
+        {
+            physicalDevice = device;
+            break;
+        }
+    }
+    
+    if (physicalDevice == VK_NULL_HANDLE)
+    {
+        throw std::runtime_error("Failed to find a suitable GPU!");
+    }
+    
+}
+
 void HelloTriangleApp::init_vulkan()
 {
     create_vulkan_instance();
+    pick_physical_device();
 }
-
 
 void HelloTriangleApp::main_loop()
 {
