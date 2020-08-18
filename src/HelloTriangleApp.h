@@ -44,6 +44,8 @@ private:
     
     std::vector<VkImageView> m_swapChainImageViews;
     
+    VkPipelineLayout m_pipelineLayout;
+    
     void init_window();
     
     void create_vulkan_instance();
