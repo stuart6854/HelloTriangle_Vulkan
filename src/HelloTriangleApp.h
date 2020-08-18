@@ -6,6 +6,7 @@
 #define _HELLOTRIANGLE_HELLOTRIANGLEAPP_H
 
 #define GLFW_INCLUDE_VULKAN
+
 #include <GLFW/glfw3.h>
 
 #include <vector>
@@ -25,9 +26,9 @@ class HelloTriangleApp
 {
 public:
     void run();
-    
+
 private:
-    GLFWwindow* m_window;
+    GLFWwindow *m_window;
     VkInstance m_instance;
     VkPhysicalDevice m_physicalDevice;
     VkDevice m_device;
@@ -38,33 +39,47 @@ private:
     
     VkSwapchainKHR m_swapChain;
     std::vector<VkImage> m_swapChainImages;
-    VkFormat  m_swapChainImageFormat;
+    VkFormat m_swapChainImageFormat;
     VkExtent2D m_swapChainExtent;
+    
+    std::vector<VkImageView> m_swapChainImageViews;
     
     void init_window();
     
     void create_vulkan_instance();
+    
     void create_surface();
+    
     void pick_physical_device();
+    
     void create_logical_device();
+    
     void create_swap_chain();
+    
+    void create_image_views();
     
     void init_vulkan();
     
     void main_loop();
+    
     void cleanup();
     
     
     /* Checks if all of the requested layers are available */
     static bool check_validation_layer_support();
+    
     static void list_supported_extensions();
+    
     QueueFamilyIndices find_queue_families(VkPhysicalDevice device);
+    
     bool check_device_extension_support(VkPhysicalDevice device);
+    
     SwapChainSupportDetails query_swap_chain_support(VkPhysicalDevice device);
+    
     bool is_device_suitable(VkPhysicalDevice device);
     
     /* Surface Format = Color Depth */
-    VkSurfaceFormatKHR choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+    VkSurfaceFormatKHR choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR> &availableFormats);
     
     /*
      * VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted are transferred to screen right away, which may result in tearing.
@@ -75,12 +90,12 @@ private:
      * VK_PRESENT_MODE_MAILBOX_KHR: Can be used to implement triple buffering, which allows you to avoid tearing with
      *                              significantly less latency issues than standard VSync that used double buffering.
      */
-    VkPresentModeKHR choose_swap_present_mode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+    VkPresentModeKHR choose_swap_present_mode(const std::vector<VkPresentModeKHR> &availablePresentModes);
     
     /* Swap Extent us the resolution of the swap chain images and its almost
      * always exactly equal to the resolution of the window that we're drawing to.
      */
-    VkExtent2D choose_swap_extent(const VkSurfaceCapabilitiesKHR& capabilities);
+    VkExtent2D choose_swap_extent(const VkSurfaceCapabilitiesKHR &capabilities);
     
 };
 

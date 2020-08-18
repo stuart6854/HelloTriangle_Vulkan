@@ -256,12 +256,12 @@ void HelloTriangleApp::create_swap_chain()
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
     
     // We should also make sure not to exceed the maximum number of images
-    if(swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
+    if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
     {
         imageCount = swapChainSupport.capabilities.maxImageCount;
     }
     
-    VkSwapchainCreateInfoKHR createInfo{};
+    VkSwapchainCreateInfoKHR createInfo { };
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     createInfo.surface = m_surface;
     
@@ -274,9 +274,9 @@ void HelloTriangleApp::create_swap_chain()
     
     // Specify how to handle swap chain images that will be used across multiple queue families.
     QueueFamilyIndices indices = find_queue_families(m_physicalDevice);
-    uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+    uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
     
-    if(indices.graphicsFamily != indices.presentFamily)
+    if (indices.graphicsFamily != indices.presentFamily)
     {
         // An image is owned by one family queue at a time and ownership must be explicitly transferred before using it in another queue family.
         // This option offers the best performance.
@@ -311,7 +311,7 @@ void HelloTriangleApp::create_swap_chain()
     // from scratch and a reference the old one must be specified in this field.
     createInfo.oldSwapchain = VK_NULL_HANDLE;
     
-    if(vkCreateSwapchainKHR(m_device, &createInfo, nullptr, &m_swapChain) != VK_SUCCESS)
+    if (vkCreateSwapchainKHR(m_device, &createInfo, nullptr, &m_swapChain) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create Swap Chain!");
     }
@@ -325,6 +325,43 @@ void HelloTriangleApp::create_swap_chain()
     m_swapChainExtent = extent;
 }
 
+void HelloTriangleApp::create_image_views()
+{
+    m_swapChainImageViews.resize(m_swapChainImages.size());
+    
+    for (size_t i = 0; i < m_swapChainImages.size(); i++
+            )
+    {
+        VkImageViewCreateInfo createInfo { };
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image = m_swapChainImages[i];
+        // Specify how the image data should be interpreted
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = m_swapChainImageFormat;
+        
+        // The components field allows you to swizzle the color channels around.
+        // Eg. You can map all the channels to the red channel for a monochrome texture.
+        //     You can also map constant values of 0 and 1 to a channel.
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        
+        // The subresourceRange field describes what the image's purpose is and which part
+        // of the image should be accessed
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+        
+        if(vkCreateImageView(m_device, &createInfo, nullptr, &m_swapChainImageViews[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create the image views!");
+        }
+    }
+}
+
 void HelloTriangleApp::init_vulkan()
 {
     create_vulkan_instance();
@@ -332,6 +369,7 @@ void HelloTriangleApp::init_vulkan()
     pick_physical_device();
     create_logical_device();
     create_swap_chain();
+    create_image_views();
 }
 
 void HelloTriangleApp::main_loop()
@@ -346,6 +384,12 @@ void HelloTriangleApp::main_loop()
 
 void HelloTriangleApp::cleanup()
 {
+    // Destroy ImageViews
+    for(auto imageView : m_swapChainImageViews)
+    {
+        vkDestroyImageView(m_device, imageView, nullptr);
+    }
+    
     // Destroy Swap Chain
     vkDestroySwapchainKHR(m_device, m_swapChain, nullptr);
     
@@ -364,7 +408,6 @@ void HelloTriangleApp::cleanup()
     // Terminate GLFW itself
     glfwTerminate();
 }
-
 
 
 bool HelloTriangleApp::check_validation_layer_support()
@@ -493,7 +536,7 @@ SwapChainSupportDetails HelloTriangleApp::query_swap_chain_support(VkPhysicalDev
     uint32_t formatCount = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_surface, &formatCount, nullptr);
     
-    if(formatCount != 0)
+    if (formatCount != 0)
     {
         details.formats.resize(formatCount);
         vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_surface, &formatCount, details.formats.data());
@@ -503,7 +546,7 @@ SwapChainSupportDetails HelloTriangleApp::query_swap_chain_support(VkPhysicalDev
     uint32_t presentModesCount = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_surface, &presentModesCount, nullptr);
     
-    if(presentModesCount != 0)
+    if (presentModesCount != 0)
     {
         details.presentModes.resize(presentModesCount);
         vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_surface, &presentModesCount, details.presentModes.data());
@@ -531,7 +574,7 @@ bool HelloTriangleApp::is_device_suitable(VkPhysicalDevice device)
     bool extensionsSupported = check_device_extension_support(device);
     
     bool swapChainAdequate = false;
-    if(extensionsSupported)
+    if (extensionsSupported)
     {
         SwapChainSupportDetails swapChainSupport = query_swap_chain_support(device);
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
@@ -542,9 +585,10 @@ bool HelloTriangleApp::is_device_suitable(VkPhysicalDevice device)
 
 VkSurfaceFormatKHR HelloTriangleApp::choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR> &availableFormats)
 {
-    for(const auto& availableFormat : availableFormats)
+    for (const auto &availableFormat : availableFormats
+            )
     {
-        if(availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
             return availableFormat;
         }
@@ -554,9 +598,10 @@ VkSurfaceFormatKHR HelloTriangleApp::choose_swap_surface_format(const std::vecto
 
 VkPresentModeKHR HelloTriangleApp::choose_swap_present_mode(const std::vector<VkPresentModeKHR> &availablePresentModes)
 {
-    for(const auto& availablePresentMode : availablePresentModes)
+    for (const auto &availablePresentMode : availablePresentModes
+            )
     {
-        if(availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+        if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
         {
             return availablePresentMode;
         }
@@ -568,13 +613,13 @@ VkPresentModeKHR HelloTriangleApp::choose_swap_present_mode(const std::vector<Vk
 
 VkExtent2D HelloTriangleApp::choose_swap_extent(const VkSurfaceCapabilitiesKHR &capabilities)
 {
-    if(capabilities.currentExtent.width != UINT32_MAX)
+    if (capabilities.currentExtent.width != UINT32_MAX)
     {
         return capabilities.currentExtent;
     }
     else
     {
-        VkExtent2D actualExtent = {WIDTH, HEIGHT};
+        VkExtent2D actualExtent = { WIDTH, HEIGHT };
         
         // Use Min/Max to clamp the values between the allowed minimum and maximum extents that are supported
         actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
