@@ -49,6 +49,9 @@ private:
     VkPipelineLayout m_pipelineLayout;
     VkPipeline m_graphicsPipeline;
     
+    VkBuffer m_vertexBuffer;
+    VkDeviceMemory  m_vertexBufferMemory;
+    
     VkCommandPool m_commandPool;
     std::vector<VkCommandBuffer> m_commandBuffers;
     
@@ -83,6 +86,8 @@ private:
     void create_framebuffers();
     
     void create_command_pool();
+    
+    void create_vertex_buffer();
     
     void create_command_buffers();
     
@@ -135,6 +140,8 @@ private:
     VkExtent2D choose_swap_extent(const VkSurfaceCapabilitiesKHR &capabilities);
     
     VkShaderModule create_shader_module(const std::vector<char> &code);
+    
+    uint32_t find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     
 };
 
