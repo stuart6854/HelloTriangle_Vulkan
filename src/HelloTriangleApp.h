@@ -50,7 +50,9 @@ private:
     VkPipeline m_graphicsPipeline;
     
     VkBuffer m_vertexBuffer;
-    VkDeviceMemory  m_vertexBufferMemory;
+    VkDeviceMemory m_vertexBufferMemory;
+    VkBuffer m_indexBuffer;
+    VkDeviceMemory m_indexBufferMemory;
     
     VkCommandPool m_commandPool;
     std::vector<VkCommandBuffer> m_commandBuffers;
@@ -63,7 +65,7 @@ private:
     
     bool m_frameBufferResized = false;
     
-    static void framebuffer_resize_callback(GLFWwindow* window, int width, int height);
+    static void framebuffer_resize_callback(GLFWwindow *window, int width, int height);
     
     void init_window();
     
@@ -88,6 +90,8 @@ private:
     void create_command_pool();
     
     void create_vertex_buffer();
+    
+    void create_index_buffer();
     
     void create_command_buffers();
     
@@ -143,7 +147,7 @@ private:
     
     uint32_t find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     
-    void create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+    void create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
     
     void copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     
