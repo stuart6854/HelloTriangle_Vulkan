@@ -143,6 +143,10 @@ private:
     
     uint32_t find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     
+    void create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+    
+    void copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+    
 };
 
 #endif //_HELLOTRIANGLE_HELLOTRIANGLEAPP_H
