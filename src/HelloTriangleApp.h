@@ -9,6 +9,9 @@
 
 #include <GLFW/glfw3.h>
 
+#define VULKAN_HPP_NO_NODISCARD_WARNINGS
+#include <vulkan/vulkan.hpp>
+
 #include <vector>
 
 // TODO: Look into Validation Layers
@@ -29,33 +32,34 @@ public:
 
 private:
     GLFWwindow *m_window;
-    VkInstance m_instance;
-    VkPhysicalDevice m_physicalDevice;
-    VkDevice m_device;
-    VkQueue m_graphicsQueue;
     
-    VkSurfaceKHR m_surface;
-    VkQueue m_presentQueue;
+    vk::Instance m_instance;
+    vk::PhysicalDevice m_physicalDevice;
+    vk::Device m_device;
+    vk::Queue m_graphicsQueue;
     
-    VkSwapchainKHR m_swapChain;
-    std::vector<VkImage> m_swapChainImages;
-    VkFormat m_swapChainImageFormat;
-    VkExtent2D m_swapChainExtent;
+    vk::SurfaceKHR m_surface;
+    vk::Queue m_presentQueue;
     
-    std::vector<VkImageView> m_swapChainImageViews;
-    std::vector<VkFramebuffer> m_swapChainFramebuffers;
+    vk::SwapchainKHR m_swapChain;
+    std::vector<vk::Image> m_swapChainImages;
+    vk::Format m_swapChainImageFormat;
+    vk::Extent2D m_swapChainExtent;
     
-    VkRenderPass m_renderPass;
-    VkPipelineLayout m_pipelineLayout;
-    VkPipeline m_graphicsPipeline;
+    std::vector<vk::ImageView> m_swapChainImageViews;
+    std::vector<vk::Framebuffer> m_swapChainFramebuffers;
     
-    VkCommandPool m_commandPool;
-    std::vector<VkCommandBuffer> m_commandBuffers;
+    vk::RenderPass m_renderPass;
+    vk::PipelineLayout m_pipelineLayout;
+    vk::Pipeline m_graphicsPipeline;
     
-    std::vector<VkSemaphore> m_imageAvailableSemaphores;
-    std::vector<VkSemaphore> m_renderFinishedSemaphores;
-    std::vector<VkFence> m_inFlightFences;
-    std::vector<VkFence> m_imagesInFlight;
+    vk::CommandPool m_commandPool;
+    std::vector<vk::CommandBuffer> m_commandBuffers;
+    
+    std::vector<vk::Semaphore> m_imageAvailableSemaphores;
+    std::vector<vk::Semaphore> m_renderFinishedSemaphores;
+    std::vector<vk::Fence> m_inFlightFences;
+    std::vector<vk::Fence> m_imagesInFlight;
     size_t m_currentFrame = 0;
     
     bool m_frameBufferResized = false;
@@ -107,16 +111,16 @@ private:
     
     static void list_supported_extensions();
     
-    QueueFamilyIndices find_queue_families(VkPhysicalDevice device);
+    QueueFamilyIndices find_queue_families(vk::PhysicalDevice device);
     
-    bool check_device_extension_support(VkPhysicalDevice device);
+    static bool check_device_extension_support(vk::PhysicalDevice device);
     
-    SwapChainSupportDetails query_swap_chain_support(VkPhysicalDevice device);
+    SwapChainSupportDetails query_swap_chain_support(vk::PhysicalDevice device);
     
-    bool is_device_suitable(VkPhysicalDevice device);
+    bool is_device_suitable(vk::PhysicalDevice device);
     
     /* Surface Format = Color Depth */
-    VkSurfaceFormatKHR choose_swap_surface_format(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+    static vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
     
     /*
      * VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted are transferred to screen right away, which may result in tearing.
@@ -127,14 +131,14 @@ private:
      * VK_PRESENT_MODE_MAILBOX_KHR: Can be used to implement triple buffering, which allows you to avoid tearing with
      *                              significantly less latency issues than standard VSync that used double buffering.
      */
-    VkPresentModeKHR choose_swap_present_mode(const std::vector<VkPresentModeKHR> &availablePresentModes);
+    static vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR> &availablePresentModes);
     
     /* Swap Extent us the resolution of the swap chain images and its almost
      * always exactly equal to the resolution of the window that we're drawing to.
      */
-    VkExtent2D choose_swap_extent(const VkSurfaceCapabilitiesKHR &capabilities);
+    vk::Extent2D choose_swap_extent(const vk::SurfaceCapabilitiesKHR &capabilities);
     
-    VkShaderModule create_shader_module(const std::vector<char> &code);
+    vk::ShaderModule create_shader_module(const std::vector<char> &code);
     
 };
 
