@@ -96,9 +96,9 @@ const std::vector<uint16_t> INDICES = {
 
 struct UniformBufferObject
 {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
+    alignas(16) glm::mat4 model;
+    alignas(16) glm::mat4 view;
+    alignas(16) glm::mat4 proj;
 };
 
 static auto read_shader_binary(const std::string& filename) -> std::vector<uint32_t>
@@ -571,6 +571,59 @@ void HelloTriangleApp::create_uniform_buffers()
     }
 }
 
+void HelloTriangleApp::create_descriptor_pool()
+{
+    vk::DescriptorPoolSize poolSize{};
+    // The type of the descriptor
+    poolSize.type = vk::DescriptorType::eUniformBuffer;
+    // The number of descriptors of a given type which can be allocated in total from
+    // a given pool (across all sets)
+    poolSize.descriptorCount = static_cast<uint32_t>(m_swapChainImages.size());
+
+    vk::DescriptorPoolCreateInfo poolInfo{};
+    // The number of elements in the pPoolSizes array
+    poolInfo.poolSizeCount = 1;
+    // Pointer to an array containing no less than poolSizeCount elements containing descriptor types and a total number
+    // of descriptors of that type that can be allocated from the pool
+    poolInfo.pPoolSizes = &poolSize;
+
+    // The number of descriptor sets that can be allocated from the pool
+    poolInfo.maxSets = static_cast<uint32_t>(m_swapChainImages.size());
+
+    m_descriptorPool = m_device.createDescriptorPool(poolInfo);
+}
+
+void HelloTriangleApp::create_descriptor_sets()
+{
+    std::vector<vk::DescriptorSetLayout> layouts(m_swapChainImages.size(), m_descriptorSetLayout);
+    vk::DescriptorSetAllocateInfo allocInfo{};
+    allocInfo.descriptorPool = m_descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(m_swapChainImages.size());
+    allocInfo.pSetLayouts = layouts.data();
+
+    m_descriptorSets = m_device.allocateDescriptorSets(allocInfo);  // TODO: Error point
+
+    for (size_t i = 0; i < m_swapChainImages.size(); i++)
+    {
+        vk::DescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = m_uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        vk::WriteDescriptorSet descriptorWrite{};
+        descriptorWrite.dstSet = m_descriptorSets[i];  // The descriptor set to update
+        descriptorWrite.dstBinding = 0;                // The Uniform binding specified in the shaders
+        descriptorWrite.dstArrayElement = 0;
+
+        descriptorWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
+        descriptorWrite.descriptorCount = 1;
+
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        m_device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+    }
+}
+
 void HelloTriangleApp::create_command_buffers()
 {
     m_commandBuffers.resize(m_swapChainImages.size());
@@ -636,6 +689,9 @@ void HelloTriangleApp::create_command_buffers()
 
         m_commandBuffers[i].bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint16);
 
+        m_commandBuffers[i].bindDescriptorSets(
+            vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, 1, &m_descriptorSets[i], 0, nullptr);
+
         m_commandBuffers[i].drawIndexed(static_cast<uint32_t>(INDICES.size()), 1, 0, 0, 0);
 
         m_commandBuffers[i].endRendering();
@@ -697,6 +753,8 @@ void HelloTriangleApp::init_vulkan()
     create_vertex_buffer();
     create_index_buffer();
     create_uniform_buffers();
+    create_descriptor_pool();
+    create_descriptor_sets();
     create_command_buffers();
     create_sync_objects();
 }
@@ -704,18 +762,19 @@ void HelloTriangleApp::init_vulkan()
 void HelloTriangleApp::update_uniform_buffer(uint32_t currentImage)
 {
     static auto startTime = std::chrono::high_resolution_clock::now();
-    
+
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    
+
     UniformBufferObject ubo{};
     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10.0f);
-    
+    ubo.proj =
+        glm::perspective(glm::radians(45.0f), m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10.0f);
+
     // GLM was designed for OpenGL, where the Y coordinate of the clip coordinates is inverted
     ubo.proj[1][1] *= -1.0f;
-    
+
     void* data = m_device.mapMemory(m_uniformBuffersMemory[currentImage], 0, sizeof(ubo));
     memcpy(data, &ubo, sizeof(ubo));
     m_device.unmapMemory(m_uniformBuffersMemory[currentImage]);
@@ -819,6 +878,8 @@ void HelloTriangleApp::clean_swap_chain() const
         m_device.destroy(m_uniformBuffers[i]);
         m_device.free(m_uniformBuffersMemory[i]);
     }
+
+    m_device.destroy(m_descriptorPool);
 }
 
 void HelloTriangleApp::cleanup() const
@@ -871,6 +932,8 @@ void HelloTriangleApp::recreate_swapchain()
     create_image_views();
     create_graphics_pipeline();
     create_framebuffers();     // Depends on swap chain images
+    create_descriptor_pool();  // Depends on swap chain images
+    create_descriptor_sets();  // Depends on swap chain images
     create_command_buffers();  // Depends on swap chain images
 }
 
