@@ -55,7 +55,7 @@ private:
     vk::DeviceMemory m_vertexBufferMemory;
     vk::Buffer m_indexBuffer;
     vk::DeviceMemory m_indexBufferMemory;
-    
+
     vk::CommandPool m_commandPool;
     std::vector<vk::CommandBuffer> m_commandBuffers;
 
@@ -67,7 +67,7 @@ private:
 
     bool m_frameBufferResized = false;
 
-    static void framebuffer_resize_callback(GLFWwindow *window, int width, int height);
+    static void framebuffer_resize_callback(GLFWwindow* window, int width, int height);
 
     void init_window();
 
@@ -92,9 +92,9 @@ private:
     void create_command_pool();
 
     void create_vertex_buffer();
-    
+
     void create_index_buffer();
-    
+
     void create_command_buffers();
 
     void create_sync_objects();
@@ -112,43 +112,48 @@ private:
     void recreate_swap_chain();
 
     /* Checks if all of the requested layers are available */
-    static bool check_validation_layer_support();
+    static auto check_validation_layer_support() -> bool;
 
     static void list_supported_extensions();
 
-    QueueFamilyIndices find_queue_families(vk::PhysicalDevice device);
+    auto find_queue_families(vk::PhysicalDevice device) -> QueueFamilyIndices;
 
-    static bool check_device_extension_support(vk::PhysicalDevice device);
+    static auto check_device_extension_support(vk::PhysicalDevice device) -> bool;
 
-    SwapChainSupportDetails query_swap_chain_support(vk::PhysicalDevice device);
+    auto query_swap_chain_support(vk::PhysicalDevice device) -> SwapChainSupportDetails;
 
-    bool is_device_suitable(vk::PhysicalDevice device);
+    auto is_device_suitable(vk::PhysicalDevice device) -> bool;
 
     /* Surface Format = Color Depth */
-    static vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+    static auto choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
+        -> vk::SurfaceFormatKHR;
 
     /*
-     * vk::PresentModeKHR::eImmediate: Images submitted are transferred to screen right away, which may result in tearing.
-     * vk::PresentModeKHR::eFifo: Swap chain is a queue where the display takes an image from the front of the
-     *                               queue when the display is refreshed and inserts rendered images at the back of the queue. Similar to VSync in
-     *                               modern games.
-     * vk::PresentModeKHR::eFifoRelaxed: Can result in screen tearing.
-     * Vvk::PresentModeKHR::eMailbox: Can be used to implement triple buffering, which allows you to avoid tearing with significantly less latency issues than
-     *                                   standard VSync that used double buffering.
+     * vk::PresentModeKHR::eImmediate: Images submitted are transferred to screen right away, which may result in
+     * tearing. vk::PresentModeKHR::eFifo: Swap chain is a queue where the display takes an image from the front of the
+     *                               queue when the display is refreshed and inserts rendered images at the back of the
+     * queue. Similar to VSync in modern games. vk::PresentModeKHR::eFifoRelaxed: Can result in screen tearing.
+     * Vvk::PresentModeKHR::eMailbox: Can be used to implement triple buffering, which allows you to avoid tearing with
+     * significantly less latency issues than standard VSync that used double buffering.
      */
-    static vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
-    
+    static auto choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes)
+        -> vk::PresentModeKHR;
+
     /* Swap Extent us the resolution of the swap chain images and its almost
      * always exactly equal to the resolution of the window that we're drawing to.
      */
-    vk::Extent2D choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities);
+    auto choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities) -> vk::Extent2D;
 
-    vk::ShaderModule create_shader_module(const std::vector<char>& code);
-    
-    uint32_t find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
-    
-    void create_buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Buffer &buffer, vk::DeviceMemory &bufferMemory);
-    
+    auto create_shader_module(const std::vector<char>& code) -> vk::ShaderModule;
+
+    auto find_memory_type(uint32_t typeFilter, const vk::MemoryPropertyFlags& properties) -> uint32_t;
+
+    void create_buffer(vk::DeviceSize size,
+                       const vk::BufferUsageFlags& usage,
+                       const vk::MemoryPropertyFlags& properties,
+                       vk::Buffer& buffer,
+                       vk::DeviceMemory& bufferMemory);
+
     void copy_buffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
 };
 
