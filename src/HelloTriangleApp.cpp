@@ -32,7 +32,7 @@ struct QueueFamilyIndices
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
 
-    bool is_complete() const
+    auto is_complete() const -> bool
     {
         return graphicsFamily.has_value() && presentFamily.has_value();
     }
@@ -49,7 +49,7 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::array<float, 4> CLEAR_COLOR = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-static std::vector<char> readfile(const std::string& filename)
+static auto readfile(const std::string& filename) -> std::vector<char>
 {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -58,7 +58,7 @@ static std::vector<char> readfile(const std::string& filename)
         throw std::runtime_error("Failed to open file!");
     }
 
-    size_t fileSize = (size_t)file.tellg();
+    size_t fileSize = static_cast<size_t>(file.tellg());
     std::vector<char> buffer(fileSize);
 
     file.seekg(0);
@@ -71,7 +71,7 @@ static std::vector<char> readfile(const std::string& filename)
 
 void HelloTriangleApp::framebuffer_resize_callback(GLFWwindow* window, int width, int height)
 {
-    auto app = reinterpret_cast<HelloTriangleApp*>(glfwGetWindowUserPointer(window));
+    auto* app = static_cast<HelloTriangleApp*>(glfwGetWindowUserPointer(window));
     app->m_frameBufferResized = true;
 }
 
@@ -129,9 +129,7 @@ void HelloTriangleApp::create_vulkan_instance()
     // which means we need a an extension to interface with the window system.
     // GLFW provides a handy function that returns the extensions it needs.
     uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
-
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
     instanceCreateInfo.enabledExtensionCount = glfwExtensionCount;
     instanceCreateInfo.ppEnabledExtensionNames = glfwExtensions;
@@ -153,7 +151,7 @@ void HelloTriangleApp::create_vulkan_instance()
 
 void HelloTriangleApp::create_surface()
 {
-    VkSurfaceKHR rawSurface;
+    VkSurfaceKHR rawSurface = nullptr;
     if (glfwCreateWindowSurface(m_instance, m_window, nullptr, &rawSurface) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create window surface!");
@@ -288,7 +286,7 @@ void HelloTriangleApp::create_swap_chain()
     // Specify how to handle swap chain images that will be used across multiple
     // queue families.
     QueueFamilyIndices indices = find_queue_families(m_physicalDevice);
-    uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+    std::vector<uint32_t> queueFamilyIndices = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
     if (indices.graphicsFamily != indices.presentFamily)
     {
@@ -297,7 +295,7 @@ void HelloTriangleApp::create_swap_chain()
         // option offers the best performance.
         createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
         createInfo.queueFamilyIndexCount = 2;
-        createInfo.pQueueFamilyIndices = queueFamilyIndices;
+        createInfo.pQueueFamilyIndices = queueFamilyIndices.data();
     }
     else
     {
@@ -457,7 +455,7 @@ void HelloTriangleApp::create_graphics_pipeline()
     fragShaderStageInfo.module = fragShaderModule;
     fragShaderStageInfo.pName = "main";
 
-    vk::PipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+    std::vector<vk::PipelineShaderStageCreateInfo> shaderStages = { vertShaderStageInfo, fragShaderStageInfo };
 
     /* Fixed Function Pipeline Stages */
 
@@ -477,8 +475,8 @@ void HelloTriangleApp::create_graphics_pipeline()
     vk::Viewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)m_swapChainExtent.width;
-    viewport.height = (float)m_swapChainExtent.height;
+    viewport.width = static_cast<float>(m_swapChainExtent.width);
+    viewport.height = static_cast<float>(m_swapChainExtent.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
@@ -534,7 +532,7 @@ void HelloTriangleApp::create_graphics_pipeline()
 
     vk::GraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages = shaderStages;
+    pipelineInfo.pStages = shaderStages.data();
 
     pipelineInfo.pVertexInputState = &vertexInputInfo;
     pipelineInfo.pInputAssemblyState = &inputAssembly;
@@ -566,12 +564,12 @@ void HelloTriangleApp::create_framebuffers()
     m_swapChainFramebuffers.resize(m_swapChainImageViews.size());
     for (size_t i = 0; i < m_swapChainImageViews.size(); i++)
     {
-        vk::ImageView attachments[] = { m_swapChainImageViews[i] };
+        std::vector<vk::ImageView> attachments = { m_swapChainImageViews[i] };
 
         vk::FramebufferCreateInfo framebufferInfo{};
         framebufferInfo.renderPass = m_renderPass;
         framebufferInfo.attachmentCount = 1;
-        framebufferInfo.pAttachments = attachments;
+        framebufferInfo.pAttachments = attachments.data();
         framebufferInfo.width = m_swapChainExtent.width;
         framebufferInfo.height = m_swapChainExtent.height;
         framebufferInfo.layers = 1;
@@ -597,7 +595,7 @@ void HelloTriangleApp::create_command_buffers()
     vk::CommandBufferAllocateInfo allocInfo{};
     allocInfo.commandPool = m_commandPool;
     allocInfo.level = vk::CommandBufferLevel::ePrimary;
-    allocInfo.commandBufferCount = (uint32_t)m_commandBuffers.size();
+    allocInfo.commandBufferCount = static_cast<uint32_t>(m_commandBuffers.size());
 
     if (m_device.allocateCommandBuffers(&allocInfo, m_commandBuffers.data()) != vk::Result::eSuccess)
     {
@@ -822,7 +820,8 @@ void HelloTriangleApp::cleanup()
 
 void HelloTriangleApp::recreate_swap_chain()
 {
-    int width = 0, height = 0;
+    int width = 0;
+    int height = 0;
     glfwGetFramebufferSize(m_window, &width, &height);
     while (width == 0 || height == 0)
     {
@@ -847,7 +846,7 @@ void HelloTriangleApp::recreate_swap_chain()
     create_command_buffers();  // Depends on swap chain images
 }
 
-bool HelloTriangleApp::check_validation_layer_support()
+auto HelloTriangleApp::check_validation_layer_support() -> bool
 {
     // Query validation layers
     std::vector<vk::LayerProperties> availableLayers = vk::enumerateInstanceLayerProperties();
@@ -889,7 +888,7 @@ void HelloTriangleApp::list_supported_extensions()
     }
 }
 
-QueueFamilyIndices HelloTriangleApp::find_queue_families(vk::PhysicalDevice device)
+auto HelloTriangleApp::find_queue_families(vk::PhysicalDevice device) -> QueueFamilyIndices
 {
     QueueFamilyIndices indices{};
 
@@ -903,7 +902,7 @@ QueueFamilyIndices HelloTriangleApp::find_queue_families(vk::PhysicalDevice devi
             indices.graphicsFamily = i;
         }
 
-        vk::Bool32 presentSupport = false;
+        vk::Bool32 presentSupport = VK_FALSE;
         device.getSurfaceSupportKHR(i, m_surface, &presentSupport);
 
         if (presentSupport)
@@ -922,7 +921,7 @@ QueueFamilyIndices HelloTriangleApp::find_queue_families(vk::PhysicalDevice devi
     return indices;
 }
 
-bool HelloTriangleApp::check_device_extension_support(vk::PhysicalDevice device)
+auto HelloTriangleApp::check_device_extension_support(vk::PhysicalDevice device) -> bool
 {
     std::vector<vk::ExtensionProperties> availableExtensions = device.enumerateDeviceExtensionProperties();
 
@@ -936,7 +935,7 @@ bool HelloTriangleApp::check_device_extension_support(vk::PhysicalDevice device)
     return requiredExtensions.empty();
 }
 
-SwapChainSupportDetails HelloTriangleApp::query_swap_chain_support(vk::PhysicalDevice device)
+auto HelloTriangleApp::query_swap_chain_support(vk::PhysicalDevice device) -> SwapChainSupportDetails
 {
     SwapChainSupportDetails details;
 
@@ -952,7 +951,7 @@ SwapChainSupportDetails HelloTriangleApp::query_swap_chain_support(vk::PhysicalD
     return details;
 }
 
-bool HelloTriangleApp::is_device_suitable(vk::PhysicalDevice device)
+auto HelloTriangleApp::is_device_suitable(vk::PhysicalDevice device) -> bool
 {
     // To evaluate the suitability of a device we start by querying for some
     // details.
@@ -982,8 +981,8 @@ bool HelloTriangleApp::is_device_suitable(vk::PhysicalDevice device)
     return indices.is_complete() && extensionsSupported && swapChainAdequate;
 }
 
-vk::SurfaceFormatKHR HelloTriangleApp::choose_swap_surface_format(
-    const std::vector<vk::SurfaceFormatKHR>& availableFormats)
+auto HelloTriangleApp::choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
+    -> vk::SurfaceFormatKHR
 {
     for (const auto& availableFormat : availableFormats)
     {
@@ -996,8 +995,8 @@ vk::SurfaceFormatKHR HelloTriangleApp::choose_swap_surface_format(
     return availableFormats[0];
 }
 
-vk::PresentModeKHR HelloTriangleApp::choose_swap_present_mode(
-    const std::vector<vk::PresentModeKHR>& availablePresentModes)
+auto HelloTriangleApp::choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes)
+    -> vk::PresentModeKHR
 {
     for (const auto& availablePresentMode : availablePresentModes)
     {
@@ -1011,31 +1010,31 @@ vk::PresentModeKHR HelloTriangleApp::choose_swap_present_mode(
     return vk::PresentModeKHR::eFifo;
 }
 
-vk::Extent2D HelloTriangleApp::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities)
+auto HelloTriangleApp::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities) -> vk::Extent2D
 {
     if (capabilities.currentExtent.width != UINT32_MAX)
     {
         return capabilities.currentExtent;
     }
-    else
-    {
-        int width, height;
-        glfwGetFramebufferSize(m_window, &width, &height);
 
-        vk::Extent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+    int width{};
+    int height{};
+    glfwGetFramebufferSize(m_window, &width, &height);
 
-        // Use Min/Max to clamp the values between the allowed minimum and
-        // maximum extents that are supported
-        actualExtent.width = std::max(capabilities.minImageExtent.width,
-                                      std::min(capabilities.maxImageExtent.width, actualExtent.width));
-        actualExtent.height = std::max(capabilities.minImageExtent.height,
-                                       std::min(capabilities.maxImageExtent.height, actualExtent.height));
+    vk::Extent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 
-        return actualExtent;
-    }
+    // Use Min/Max to clamp the values between the allowed minimum and
+    // maximum extents that are supported
+
+    actualExtent.width =
+        std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+    actualExtent.height =
+        std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+    return actualExtent;
 }
 
-vk::ShaderModule HelloTriangleApp::create_shader_module(const std::vector<char>& code)
+auto HelloTriangleApp::create_shader_module(const std::vector<char>& code) -> vk::ShaderModule
 {
     vk::ShaderModuleCreateInfo createInfo{};
     createInfo.codeSize = code.size();
@@ -1044,7 +1043,7 @@ vk::ShaderModule HelloTriangleApp::create_shader_module(const std::vector<char>&
     return m_device.createShaderModule(createInfo);
 }
 
-int main(int argc, char** argv)
+auto main(int argc, char** argv) -> int
 {
     HelloTriangleApp app{};
 

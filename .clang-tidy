@@ -1,1 +1,1 @@
-Checks: '*,-android-*,-darwin-*,-fuchsia-*,-zircon-*'
+Checks: '*,-android-*,-darwin-*,-fuchsia-*,-zircon-*,-llvm*,-modernize-use-nodiscard,-*-avoid-c-arrays,-misc-*,-cert-*,-*-uppercase-literal-suffix,-hicpp-signed-bitwise,-cppcoreguidelines-pro-type-union-access,-cppcoreguidelines-pro-type-reinterpret-cast,-readability-implicit-bool-conversion'

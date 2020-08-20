@@ -104,20 +104,21 @@ private:
     void recreate_swap_chain();
 
     /* Checks if all of the requested layers are available */
-    static bool check_validation_layer_support();
+    static auto check_validation_layer_support() -> bool;
 
     static void list_supported_extensions();
 
-    QueueFamilyIndices find_queue_families(vk::PhysicalDevice device);
+    auto find_queue_families(vk::PhysicalDevice device) -> QueueFamilyIndices;
 
-    static bool check_device_extension_support(vk::PhysicalDevice device);
+    static auto check_device_extension_support(vk::PhysicalDevice device) -> bool;
 
-    SwapChainSupportDetails query_swap_chain_support(vk::PhysicalDevice device);
+    auto query_swap_chain_support(vk::PhysicalDevice device) -> SwapChainSupportDetails;
 
-    bool is_device_suitable(vk::PhysicalDevice device);
+    auto is_device_suitable(vk::PhysicalDevice device) -> bool;
 
     /* Surface Format = Color Depth */
-    static vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+    static auto choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
+        -> vk::SurfaceFormatKHR;
 
     /*
      * VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted are transferred to screen right away, which may result in
@@ -127,14 +128,15 @@ private:
      * used to implement triple buffering, which allows you to avoid tearing with significantly less latency issues than
      * standard VSync that used double buffering.
      */
-    static vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
+    static auto choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes)
+        -> vk::PresentModeKHR;
 
     /* Swap Extent us the resolution of the swap chain images and its almost
      * always exactly equal to the resolution of the window that we're drawing to.
      */
-    vk::Extent2D choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities);
+    auto choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities) -> vk::Extent2D;
 
-    vk::ShaderModule create_shader_module(const std::vector<char>& code);
+    auto create_shader_module(const std::vector<char>& code) -> vk::ShaderModule;
 };
 
 #endif  //_HELLOTRIANGLE_HELLOTRIANGLEAPP_H
