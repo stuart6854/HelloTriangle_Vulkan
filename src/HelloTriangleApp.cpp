@@ -11,8 +11,11 @@
 #include <iostream>
 #include <optional>
 #include <set>
+#include <chrono>
 
+#define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -89,6 +92,13 @@ const std::vector<Vertex> VERTICES = {
 
 const std::vector<uint16_t> INDICES = {
     0, 1, 2, 2, 3, 0,
+};
+
+struct UniformBufferObject
+{
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
 };
 
 static auto read_shader_binary(const std::string& filename) -> std::vector<uint32_t>
@@ -327,6 +337,32 @@ void HelloTriangleApp::create_image_views()
     }
 }
 
+void HelloTriangleApp::create_descriptor_set_layout()
+{
+    vk::DescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;  // Should be the same as defined in shader
+    uboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+    uboLayoutBinding.descriptorCount = 1;
+    // NOTE: It is possible to for the shader variable to represent an array of uniform buffer
+    //       objects, and descriptorCount specifies the number of values in the array. This could
+    //       be used to specify a transformation for each of the bones in a skeleton for skeletal
+    //       animation, for example.
+
+    // We also need to specify in which shader stages the descriptor is going to be referenced.
+    // The stageFlags field can be a combination of vk::ShaderStageFlagBits
+    // or vk::ShaderStageFlagBits::eAllGraphics
+    uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+    // The pImmutableSamplers field is only relevent for image sampling related descriptors
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+
+    vk::DescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    m_descriptorSetLayout = m_device.createDescriptorSetLayout(layoutInfo);
+}
+
 void HelloTriangleApp::create_graphics_pipeline()
 {
     /* Programmable Pipeline Stages */
@@ -419,6 +455,8 @@ void HelloTriangleApp::create_graphics_pipeline()
 
     // Pipeline Layout
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &m_descriptorSetLayout;
 
     m_pipelineLayout = m_device.createPipelineLayout(pipelineLayoutInfo);
 
@@ -514,6 +552,23 @@ void HelloTriangleApp::create_index_buffer()
 
     m_device.destroy(stagingBuffer);
     m_device.free(stagingBufferMemory);
+}
+
+void HelloTriangleApp::create_uniform_buffers()
+{
+    vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+
+    m_uniformBuffers.resize(m_swapChainImages.size());
+    m_uniformBuffersMemory.resize(m_swapChainImages.size());
+
+    for (size_t i = 0; i < m_swapChainImages.size(); i++)
+    {
+        create_buffer(bufferSize,
+                      vk::BufferUsageFlagBits::eUniformBuffer,
+                      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                      m_uniformBuffers[i],
+                      m_uniformBuffersMemory[i]);
+    }
 }
 
 void HelloTriangleApp::create_command_buffers()
@@ -636,12 +691,34 @@ void HelloTriangleApp::init_vulkan()
     create_device();
     create_swapchain();
     create_image_views();
+    create_descriptor_set_layout();
     create_graphics_pipeline();
     create_command_pool();
     create_vertex_buffer();
     create_index_buffer();
+    create_uniform_buffers();
     create_command_buffers();
     create_sync_objects();
+}
+
+void HelloTriangleApp::update_uniform_buffer(uint32_t currentImage)
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    
+    UniformBufferObject ubo{};
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.proj = glm::perspective(glm::radians(45.0f), m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10.0f);
+    
+    // GLM was designed for OpenGL, where the Y coordinate of the clip coordinates is inverted
+    ubo.proj[1][1] *= -1.0f;
+    
+    void* data = m_device.mapMemory(m_uniformBuffersMemory[currentImage], 0, sizeof(ubo));
+    memcpy(data, &ubo, sizeof(ubo));
+    m_device.unmapMemory(m_uniformBuffersMemory[currentImage]);
 }
 
 void HelloTriangleApp::draw_frame()
@@ -667,6 +744,8 @@ void HelloTriangleApp::draw_frame()
     }
 
     m_imagesInFlight[imageIndex] = m_inFlightFences[m_currentFrame];
+
+    update_uniform_buffer(imageIndex);
 
     vk::SubmitInfo submitInfo{};
 
@@ -734,11 +813,19 @@ void HelloTriangleApp::clean_swap_chain() const
     }
 
     m_device.destroy(m_swapChain, nullptr);
+
+    for (size_t i = 0; i < m_swapChainImages.size(); i++)
+    {
+        m_device.destroy(m_uniformBuffers[i]);
+        m_device.free(m_uniformBuffersMemory[i]);
+    }
 }
 
 void HelloTriangleApp::cleanup() const
 {
     clean_swap_chain();
+
+    m_device.destroy(m_descriptorSetLayout);
 
     m_device.destroy(m_vertexBuffer);
     m_device.free(m_vertexBufferMemory);
@@ -783,7 +870,8 @@ void HelloTriangleApp::recreate_swapchain()
     create_swapchain();
     create_image_views();
     create_graphics_pipeline();
-    create_command_buffers();
+    create_framebuffers();     // Depends on swap chain images
+    create_command_buffers();  // Depends on swap chain images
 }
 
 auto HelloTriangleApp::check_validation_layer_support() -> bool
