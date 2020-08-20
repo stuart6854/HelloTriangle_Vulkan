@@ -17,6 +17,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
@@ -498,6 +501,79 @@ void HelloTriangleApp::create_command_pool()
     m_commandPool = m_device.createCommandPool(poolInfo);
 }
 
+void HelloTriangleApp::create_texture_image()
+{
+    int texWidth{};
+    int texHeight{};
+    int texChannels{};
+    stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    vk::DeviceSize imageSize = texWidth * texHeight * 4;
+
+    if (!pixels)
+    {
+        throw std::runtime_error("Failed to load texture image!");
+    }
+
+    vk::Buffer stagingBuffer;
+    vk::DeviceMemory stagingBufferMemory;
+
+    create_buffer(imageSize,
+                  vk::BufferUsageFlagBits::eTransferSrc,
+                  vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                  stagingBuffer,
+                  stagingBufferMemory);
+
+    void* data = m_device.mapMemory(stagingBufferMemory, 0, imageSize);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    m_device.unmapMemory(stagingBufferMemory);
+
+    stbi_image_free(pixels);
+
+    vk::ImageCreateInfo imageInfo{};
+    imageInfo.imageType = vk::ImageType::e2D;
+    imageInfo.extent.width = static_cast<uint32_t>(texWidth);
+    imageInfo.extent.height = static_cast<uint32_t>(texHeight);
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+
+    imageInfo.format = vk::Format::eR8G8B8A8Srgb;
+
+    imageInfo.tiling = vk::ImageTiling::eOptimal;
+
+    imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+
+    // vk::ImageUsageFlagBits::eSampled allows shaders to access the image
+    imageInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+
+    imageInfo.sharingMode = vk::SharingMode::eExclusive;
+
+    imageInfo.samples = vk::SampleCountFlagBits::e1;
+
+    create_image(texWidth,
+                 texHeight,
+                 vk::Format::eR8G8B8A8Srgb,
+                 vk::ImageTiling::eOptimal,
+                 vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+                 vk::MemoryPropertyFlagBits::eDeviceLocal,
+                 m_textureImage,
+                 m_textureImageMemory);
+
+    transition_image_layout(
+        m_textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+
+    copy_buffer_to_image(
+        stagingBuffer, m_textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+
+    transition_image_layout(m_textureImage,
+                            vk::Format::eR8G8B8A8Srgb,
+                            vk::ImageLayout::eTransferDstOptimal,
+                            vk::ImageLayout::eShaderReadOnlyOptimal);
+    
+    m_device.destroy(stagingBuffer);
+    m_device.free(stagingBufferMemory);
+}
+
 void HelloTriangleApp::create_vertex_buffer()
 {
     vk::DeviceSize bufferSize = sizeof(VERTICES[0]) * VERTICES.size();  // Buffer size in bytes
@@ -750,6 +826,7 @@ void HelloTriangleApp::init_vulkan()
     create_descriptor_set_layout();
     create_graphics_pipeline();
     create_command_pool();
+    create_texture_image();
     create_vertex_buffer();
     create_index_buffer();
     create_uniform_buffers();
@@ -886,6 +963,9 @@ void HelloTriangleApp::cleanup() const
 {
     clean_swap_chain();
 
+    m_device.destroy(m_textureImage);
+    m_device.free(m_textureImageMemory);
+    
     m_device.destroy(m_descriptorSetLayout);
 
     m_device.destroy(m_vertexBuffer);
@@ -1143,6 +1223,17 @@ void HelloTriangleApp::create_buffer(vk::DeviceSize size,
 
 void HelloTriangleApp::copy_buffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size)
 {
+    vk::CommandBuffer commandBuffer = begin_single_time_commands();
+
+    vk::BufferCopy copyRegion{};
+    copyRegion.size = size;
+    commandBuffer.copyBuffer(srcBuffer, dstBuffer, 1, &copyRegion);
+
+    end_single_time_commands(commandBuffer);
+}
+
+auto HelloTriangleApp::begin_single_time_commands() -> vk::CommandBuffer
+{
     vk::CommandBufferAllocateInfo allocInfo{};
     allocInfo.level = vk::CommandBufferLevel::ePrimary;
     allocInfo.commandPool = m_commandPool;
@@ -1155,10 +1246,11 @@ void HelloTriangleApp::copy_buffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, v
 
     commandBuffer.begin(beginInfo);
 
-    vk::BufferCopy copyRegion{};
-    copyRegion.size = size;
-    commandBuffer.copyBuffer(srcBuffer, dstBuffer, 1, &copyRegion);
+    return commandBuffer;
+}
 
+void HelloTriangleApp::end_single_time_commands(vk::CommandBuffer commandBuffer)
+{
     commandBuffer.end();
 
     vk::SubmitInfo submitInfo{};
@@ -1169,6 +1261,115 @@ void HelloTriangleApp::copy_buffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, v
     m_graphicsQueue.waitIdle();
 
     m_device.free(m_commandPool, 1, &commandBuffer);
+}
+
+void HelloTriangleApp::create_image(uint32_t width,
+                                    uint32_t height,
+                                    vk::Format format,
+                                    vk::ImageTiling tiling,
+                                    const vk::ImageUsageFlags& usage,
+                                    const vk::MemoryPropertyFlags& properties,
+                                    vk::Image& image,
+                                    vk::DeviceMemory& imageMemory)
+{
+    vk::ImageCreateInfo imageInfo{};
+    imageInfo.imageType = vk::ImageType::e2D;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.format = format;
+    imageInfo.tiling = tiling;
+    imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+    // vk::ImageUsageFlagBits::eSampled allows shaders to access the image
+    imageInfo.usage = usage;
+    imageInfo.sharingMode = vk::SharingMode::eExclusive;
+    imageInfo.samples = vk::SampleCountFlagBits::e1;
+
+    m_textureImage = m_device.createImage(imageInfo);
+
+    vk::MemoryRequirements memRequirements = m_device.getImageMemoryRequirements(m_textureImage);
+
+    vk::MemoryAllocateInfo allocInfo{};
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = find_memory_type(memRequirements.memoryTypeBits, properties);
+
+    m_textureImageMemory = m_device.allocateMemory(allocInfo);
+
+    m_device.bindImageMemory(m_textureImage, m_textureImageMemory, 0);
+}
+
+void HelloTriangleApp::copy_buffer_to_image(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height)
+{
+    vk::CommandBuffer commandBuffer = begin_single_time_commands();
+
+    vk::BufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+
+    region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+
+    region.imageOffset = vk::Offset3D(0, 0, 0);
+    region.imageExtent = vk::Extent3D(width, height, 1);
+
+    commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, 1, &region);
+
+    end_single_time_commands(commandBuffer);
+}
+
+void HelloTriangleApp::transition_image_layout(vk::Image image,
+                                               vk::Format format,
+                                               vk::ImageLayout oldLayout,
+                                               vk::ImageLayout newLayout)
+{
+    vk::CommandBuffer commandBuffer = begin_single_time_commands();
+
+    vk::ImageMemoryBarrier barrier{};
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    vk::PipelineStageFlags sourceStage;
+    vk::PipelineStageFlags destinationStage;
+
+    if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+    {
+        barrier.srcAccessMask = {};
+        barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+        sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+        destinationStage = vk::PipelineStageFlagBits::eTransfer;
+    }
+    else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+    {
+        barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+        barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+        sourceStage = vk::PipelineStageFlagBits::eTransfer;
+        destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+    }
+    else
+    {
+        throw std::runtime_error("Unsupported layout transition!");
+    }
+
+    commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    end_single_time_commands(commandBuffer);
 }
 
 auto main(int argc, char** argv) -> int
