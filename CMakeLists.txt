@@ -11,6 +11,8 @@ add_subdirectory(Libs/glfw)
 
 add_subdirectory(Libs/glm)
 
+add_subdirectory(Libs/stb)
+
 add_executable(${PROJECT_NAME} src/HelloTriangleApp.cpp)
 
 target_include_directories(${PROJECT_NAME} PUBLIC src)
@@ -20,4 +22,5 @@ target_link_libraries(${PROJECT_NAME}
                       glfw
                       vulkan
                       glm
+                      stb
                       )

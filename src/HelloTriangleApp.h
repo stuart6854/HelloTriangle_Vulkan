@@ -52,7 +52,7 @@ private:
     vk::DescriptorSetLayout m_descriptorSetLayout;
     vk::PipelineLayout m_pipelineLayout;
     vk::Pipeline m_graphicsPipeline;
-    
+
     vk::Buffer m_vertexBuffer;
     vk::DeviceMemory m_vertexBufferMemory;
     vk::Buffer m_indexBuffer;
@@ -60,10 +60,10 @@ private:
 
     std::vector<vk::Buffer> m_uniformBuffers;
     std::vector<vk::DeviceMemory> m_uniformBuffersMemory;
-    
+
     vk::DescriptorPool m_descriptorPool;
     std::vector<vk::DescriptorSet> m_descriptorSets;
-    
+
     vk::CommandPool m_commandPool;
     std::vector<vk::CommandBuffer> m_commandBuffers;
 
@@ -72,6 +72,9 @@ private:
     std::vector<vk::Fence> m_inFlightFences;
     std::vector<vk::Fence> m_imagesInFlight;
     size_t m_currentFrame = 0;
+
+    vk::Image m_textureImage;
+    vk::DeviceMemory m_textureImageMemory;
 
     bool m_frameBufferResized = false;
 
@@ -92,7 +95,7 @@ private:
     void create_image_views();
 
     void create_render_pass();
-    
+
     void create_descriptor_set_layout();
 
     void create_graphics_pipeline();
@@ -101,16 +104,18 @@ private:
 
     void create_command_pool();
 
+    void create_texture_image();
+
     void create_vertex_buffer();
 
     void create_index_buffer();
 
     void create_uniform_buffers();
-    
+
     void create_descriptor_pool();
-    
+
     void create_descriptor_sets();
-    
+
     void create_command_buffers();
 
     void create_sync_objects();
@@ -118,7 +123,7 @@ private:
     void init_vulkan();
 
     void update_uniform_buffer(uint32_t currentImage);
-    
+
     void draw_frame();
 
     void main_loop();
@@ -173,6 +178,23 @@ private:
                        vk::DeviceMemory& bufferMemory);
 
     void copy_buffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
+
+    auto begin_single_time_commands() -> vk::CommandBuffer;
+
+    void end_single_time_commands(vk::CommandBuffer commandBuffer);
+    
+    void create_image(uint32_t width,
+                      uint32_t height,
+                      vk::Format format,
+                      vk::ImageTiling tiling,
+                      const vk::ImageUsageFlags& usage,
+                      const vk::MemoryPropertyFlags& properties,
+                      vk::Image& image,
+                      vk::DeviceMemory& imageMemory);
+    
+    void copy_buffer_to_image(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
+    
+    void transition_image_layout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
     
 };
 
