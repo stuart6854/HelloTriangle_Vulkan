@@ -49,13 +49,18 @@ private:
     std::vector<vk::Framebuffer> m_swapChainFramebuffers;
 
     vk::RenderPass m_renderPass;
+    vk::DescriptorSetLayout m_descriptorSetLayout;
     vk::PipelineLayout m_pipelineLayout;
     vk::Pipeline m_graphicsPipeline;
+    
     vk::Buffer m_vertexBuffer;
     vk::DeviceMemory m_vertexBufferMemory;
     vk::Buffer m_indexBuffer;
     vk::DeviceMemory m_indexBufferMemory;
 
+    std::vector<vk::Buffer> m_uniformBuffers;
+    std::vector<vk::DeviceMemory> m_uniformBuffersMemory;
+    
     vk::CommandPool m_commandPool;
     std::vector<vk::CommandBuffer> m_commandBuffers;
 
@@ -84,6 +89,8 @@ private:
     void create_image_views();
 
     void create_render_pass();
+    
+    void create_descriptor_set_layout();
 
     void create_graphics_pipeline();
 
@@ -95,12 +102,16 @@ private:
 
     void create_index_buffer();
 
+    void create_uniform_buffers();
+    
     void create_command_buffers();
 
     void create_sync_objects();
 
     void init_vulkan();
 
+    void update_uniform_buffer(uint32_t currentImage);
+    
     void draw_frame();
 
     void main_loop();
@@ -155,6 +166,7 @@ private:
                        vk::DeviceMemory& bufferMemory);
 
     void copy_buffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
+    
 };
 
 #endif  //_HELLOTRIANGLE_HELLOTRIANGLEAPP_H
