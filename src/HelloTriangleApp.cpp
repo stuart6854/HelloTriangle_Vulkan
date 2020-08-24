@@ -56,6 +56,7 @@ struct Vertex
 {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 texCoord;
 
     static auto get_binding_description() -> vk::VertexInputBindingDescription
     {
@@ -68,9 +69,9 @@ struct Vertex
         return bindingDesc;
     }
 
-    static auto get_attrib_descriptions() -> std::array<vk::VertexInputAttributeDescription, 2>
+    static auto get_attrib_descriptions() -> std::array<vk::VertexInputAttributeDescription, 3>
     {
-        std::array<vk::VertexInputAttributeDescription, 2> attribDescriptions{};
+        std::array<vk::VertexInputAttributeDescription, 3> attribDescriptions{};
 
         attribDescriptions[0].binding = 0;
         attribDescriptions[0].location = 0;
@@ -82,16 +83,19 @@ struct Vertex
         attribDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
         attribDescriptions[1].offset = offsetof(Vertex, color);
 
+        attribDescriptions[2].binding = 0;
+        attribDescriptions[2].location = 2;
+        attribDescriptions[2].format = vk::Format::eR32G32Sfloat;
+        attribDescriptions[2].offset = offsetof(Vertex, texCoord);
+
         return attribDescriptions;
     }
 };
 
-const std::vector<Vertex> VERTICES = {
-    { { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-    { { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
-    { { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
-    { { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f } },
-};
+const std::vector<Vertex> VERTICES = { { { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
+                                       { { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
+                                       { { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
+                                       { { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } } };
 
 const std::vector<uint16_t> INDICES = {
     0, 1, 2, 2, 3, 0,
@@ -231,6 +235,7 @@ void HelloTriangleApp::create_device()
     }
 
     vk::PhysicalDeviceFeatures deviceFeatures{};
+    deviceFeatures.setSamplerAnisotropy(VK_TRUE);
 
     vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
     dynamicRenderingFeatures.dynamicRendering = true;
@@ -322,21 +327,7 @@ void HelloTriangleApp::create_image_views()
 
     for (size_t i = 0; i < m_swapChainImages.size(); i++)
     {
-        vk::ImageViewCreateInfo createInfo{};
-        createInfo.image = m_swapChainImages[i];
-        createInfo.viewType = vk::ImageViewType::e2D;
-        createInfo.format = m_swapChainImageFormat;
-        createInfo.components.r = vk::ComponentSwizzle::eIdentity;
-        createInfo.components.g = vk::ComponentSwizzle::eIdentity;
-        createInfo.components.b = vk::ComponentSwizzle::eIdentity;
-        createInfo.components.a = vk::ComponentSwizzle::eIdentity;
-        createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-        createInfo.subresourceRange.baseMipLevel = 0;
-        createInfo.subresourceRange.levelCount = 1;
-        createInfo.subresourceRange.baseArrayLayer = 0;
-        createInfo.subresourceRange.layerCount = 1;
-
-        m_swapChainImageViews[i] = m_device.createImageView(createInfo);
+        m_swapChainImageViews[i] = create_image_view(m_swapChainImages[i], m_swapChainImageFormat);
     }
 }
 
@@ -350,18 +341,25 @@ void HelloTriangleApp::create_descriptor_set_layout()
     //       objects, and descriptorCount specifies the number of values in the array. This could
     //       be used to specify a transformation for each of the bones in a skeleton for skeletal
     //       animation, for example.
-
     // We also need to specify in which shader stages the descriptor is going to be referenced.
     // The stageFlags field can be a combination of vk::ShaderStageFlagBits
     // or vk::ShaderStageFlagBits::eAllGraphics
     uboLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
-
     // The pImmutableSamplers field is only relevent for image sampling related descriptors
     uboLayoutBinding.pImmutableSamplers = nullptr;
 
+    vk::DescriptorSetLayoutBinding samplerLayoutBinding{};
+    samplerLayoutBinding.setBinding(1);
+    samplerLayoutBinding.setDescriptorCount(1);
+    samplerLayoutBinding.setDescriptorType(vk::DescriptorType::eCombinedImageSampler);
+    samplerLayoutBinding.setPImmutableSamplers(nullptr);
+    samplerLayoutBinding.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+
+    std::vector<vk::DescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding };
+
     vk::DescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &uboLayoutBinding;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
 
     m_descriptorSetLayout = m_device.createDescriptorSetLayout(layoutInfo);
 }
@@ -569,9 +567,39 @@ void HelloTriangleApp::create_texture_image()
                             vk::Format::eR8G8B8A8Srgb,
                             vk::ImageLayout::eTransferDstOptimal,
                             vk::ImageLayout::eShaderReadOnlyOptimal);
-    
+
     m_device.destroy(stagingBuffer);
     m_device.free(stagingBufferMemory);
+}
+
+void HelloTriangleApp::create_texture_image_view()
+{
+    m_textureImageView = create_image_view(m_textureImage, vk::Format::eR8G8B8A8Srgb);
+}
+
+void HelloTriangleApp::create_texture_sampler()
+{
+    vk::SamplerCreateInfo createInfo{};
+    createInfo.setMagFilter(vk::Filter::eLinear);
+    createInfo.setMinFilter(vk::Filter::eLinear);
+    createInfo.setAddressModeU(vk::SamplerAddressMode::eRepeat);
+    createInfo.setAddressModeV(vk::SamplerAddressMode::eRepeat);
+    createInfo.setAddressModeW(vk::SamplerAddressMode::eRepeat);
+    createInfo.setAnisotropyEnable(VK_TRUE);
+    // The max amount of texel samples that can be used to calculate final color
+    createInfo.setMaxAnisotropy(16.0f);
+    // Color to return when sampling beyond the image with clamp to border
+    createInfo.setBorderColor(vk::BorderColor::eIntOpaqueBlack);
+    // What coordinate system to use to address texels in an image. false = 0-1, true = 0-dimensions
+    createInfo.setUnnormalizedCoordinates(VK_FALSE);
+    createInfo.setCompareEnable(VK_FALSE);
+    createInfo.setCompareOp(vk::CompareOp::eAlways);
+    createInfo.setMipmapMode(vk::SamplerMipmapMode::eLinear);
+    createInfo.setMipLodBias(0.0f);
+    createInfo.setMinLod(0.0f);
+    createInfo.setMaxLod(0.0f);
+
+    m_textureSampler = m_device.createSampler(createInfo);
 }
 
 void HelloTriangleApp::create_vertex_buffer()
@@ -649,19 +677,21 @@ void HelloTriangleApp::create_uniform_buffers()
 
 void HelloTriangleApp::create_descriptor_pool()
 {
-    vk::DescriptorPoolSize poolSize{};
+    std::array<vk::DescriptorPoolSize, 2> poolSizes{};
     // The type of the descriptor
-    poolSize.type = vk::DescriptorType::eUniformBuffer;
+    poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
     // The number of descriptors of a given type which can be allocated in total from
     // a given pool (across all sets)
-    poolSize.descriptorCount = static_cast<uint32_t>(m_swapChainImages.size());
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(m_swapChainImages.size());
+    poolSizes[1].type = vk::DescriptorType::eCombinedImageSampler;
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(m_swapChainImages.size());
 
     vk::DescriptorPoolCreateInfo poolInfo{};
     // The number of elements in the pPoolSizes array
-    poolInfo.poolSizeCount = 1;
+    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     // Pointer to an array containing no less than poolSizeCount elements containing descriptor types and a total number
     // of descriptors of that type that can be allocated from the pool
-    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.pPoolSizes = poolSizes.data();
 
     // The number of descriptor sets that can be allocated from the pool
     poolInfo.maxSets = static_cast<uint32_t>(m_swapChainImages.size());
@@ -686,17 +716,28 @@ void HelloTriangleApp::create_descriptor_sets()
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
-        vk::WriteDescriptorSet descriptorWrite{};
-        descriptorWrite.dstSet = m_descriptorSets[i];  // The descriptor set to update
-        descriptorWrite.dstBinding = 0;                // The Uniform binding specified in the shaders
-        descriptorWrite.dstArrayElement = 0;
+        vk::DescriptorImageInfo imageInfo{};
+        imageInfo.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+        imageInfo.setImageView(m_textureImageView);
+        imageInfo.setSampler(m_textureSampler);
 
-        descriptorWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
-        descriptorWrite.descriptorCount = 1;
+        std::array<vk::WriteDescriptorSet, 2> descriptorWrites{};
+        descriptorWrites[0].dstSet = m_descriptorSets[i];  // The descriptor set to update
+        descriptorWrites[0].dstBinding = 0;                // The Uniform binding specified in the shaders
+        descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrites[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].pBufferInfo = &bufferInfo;
 
-        descriptorWrite.pBufferInfo = &bufferInfo;
+        descriptorWrites[1].dstSet = m_descriptorSets[i];  // The descriptor set to update
+        descriptorWrites[1].dstBinding = 1;                // The Uniform binding specified in the shaders
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pImageInfo = &imageInfo;
 
-        m_device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+        m_device.updateDescriptorSets(
+            static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 }
 
@@ -827,6 +868,8 @@ void HelloTriangleApp::init_vulkan()
     create_graphics_pipeline();
     create_command_pool();
     create_texture_image();
+    create_texture_image_view();
+    create_texture_sampler();
     create_vertex_buffer();
     create_index_buffer();
     create_uniform_buffers();
@@ -963,9 +1006,11 @@ void HelloTriangleApp::cleanup() const
 {
     clean_swap_chain();
 
+    m_device.destroy(m_textureSampler);
+    m_device.destroy(m_textureImageView);
     m_device.destroy(m_textureImage);
     m_device.free(m_textureImageMemory);
-    
+
     m_device.destroy(m_descriptorSetLayout);
 
     m_device.destroy(m_vertexBuffer);
@@ -1125,7 +1170,9 @@ auto HelloTriangleApp::is_device_suitable(vk::PhysicalDevice device) -> bool
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
-    return indices.is_complete() && extensionsSupported && swapChainAdequate;
+    auto deviceFeatures = device.getFeatures();
+
+    return indices.is_complete() && extensionsSupported && swapChainAdequate && deviceFeatures.samplerAnisotropy;
 }
 
 auto HelloTriangleApp::choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) -> vk::SurfaceFormatKHR
@@ -1370,6 +1417,23 @@ void HelloTriangleApp::transition_image_layout(vk::Image image,
     commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, 0, nullptr, 0, nullptr, 1, &barrier);
 
     end_single_time_commands(commandBuffer);
+}
+auto HelloTriangleApp::create_image_view(vk::Image image, vk::Format format) -> vk::ImageView
+{
+    vk::ImageViewCreateInfo createInfo{};
+    createInfo.image = image;
+    // Specify how the image data should be interpreted
+    createInfo.viewType = vk::ImageViewType::e2D;
+    createInfo.format = format;
+    // The subresourceRange field describes what the image's purpose is and
+    // which part of the image should be accessed
+    createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    createInfo.subresourceRange.baseMipLevel = 0;
+    createInfo.subresourceRange.levelCount = 1;
+    createInfo.subresourceRange.baseArrayLayer = 0;
+    createInfo.subresourceRange.layerCount = 1;
+
+    return m_device.createImageView(createInfo);
 }
 
 auto main(int argc, char** argv) -> int
