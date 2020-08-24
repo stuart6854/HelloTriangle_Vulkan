@@ -75,6 +75,8 @@ private:
 
     vk::Image m_textureImage;
     vk::DeviceMemory m_textureImageMemory;
+    vk::ImageView m_textureImageView;
+    vk::Sampler m_textureSampler;
 
     bool m_frameBufferResized = false;
 
@@ -106,6 +108,10 @@ private:
 
     void create_texture_image();
 
+    void create_texture_image_view();
+    
+    void create_texture_sampler();
+    
     void create_vertex_buffer();
 
     void create_index_buffer();
@@ -182,7 +188,7 @@ private:
     auto begin_single_time_commands() -> vk::CommandBuffer;
 
     void end_single_time_commands(vk::CommandBuffer commandBuffer);
-    
+
     void create_image(uint32_t width,
                       uint32_t height,
                       vk::Format format,
@@ -191,11 +197,15 @@ private:
                       const vk::MemoryPropertyFlags& properties,
                       vk::Image& image,
                       vk::DeviceMemory& imageMemory);
-    
+
     void copy_buffer_to_image(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
+
+    void transition_image_layout(vk::Image image,
+                                 vk::Format format,
+                                 vk::ImageLayout oldLayout,
+                                 vk::ImageLayout newLayout);
     
-    void transition_image_layout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
-    
+    auto create_image_view(vk::Image image, vk::Format format) -> vk::ImageView;
 };
 
 #endif  //_HELLOTRIANGLE_HELLOTRIANGLEAPP_H
