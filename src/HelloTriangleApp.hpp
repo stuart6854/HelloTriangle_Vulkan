@@ -49,61 +49,61 @@ private:
 
     bool m_frameBufferResized = false;
 
-    static void framebuffer_resize_callback(GLFWwindow* window, int width, int height);
+    static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
-    void init_window();
+    void initWindow();
 
-    void create_vulkan_instance();
+    void createVulkanInstance();
 
-    void create_surface();
+    void createSurface();
 
-    void pick_physical_device();
+    void pickPhysicalDevice();
 
-    void create_logical_device();
+    void createLogicalDevice();
 
-    void create_swap_chain();
+    void createSwapChain();
 
-    void create_image_views();
+    void createImageViews();
 
-    void create_render_pass();
+    void createRenderPass();
 
-    void create_graphics_pipeline();
+    void createGraphicsPipeline();
 
-    void create_framebuffers();
+    void createFramebuffers();
 
-    void create_command_pool();
+    void createCommandPool();
 
-    void create_command_buffers();
+    void createCommandBuffers();
 
-    void create_sync_objects();
+    void createSyncObjects();
 
-    void init_vulkan();
+    void initVulkan();
 
-    void draw_frame();
+    void drawFrame();
 
-    void main_loop();
+    void mainLoop();
 
-    void cleanup_swap_chain();
+    void cleanupSwapChain() const;
 
-    void cleanup();
+    void cleanup() const;
 
-    void recreate_swap_chain();
+    void recreateSwapChain();
 
     /* Checks if all of the requested layers are available */
-    static auto check_validation_layer_support() -> bool;
+    static auto checkValidationLayerSupport() -> bool;
 
-    static void list_supported_extensions();
+    static void listSupportedExtensions();
 
-    auto find_queue_families(vk::PhysicalDevice device) -> QueueFamilyIndices;
+    auto findQueueFamilies(vk::PhysicalDevice device) const -> QueueFamilyIndices;
 
-    static auto check_device_extension_support(vk::PhysicalDevice device) -> bool;
+    static auto checkDeviceExtensionSupport(vk::PhysicalDevice device) -> bool;
 
-    auto query_swap_chain_support(vk::PhysicalDevice device) -> SwapChainSupportDetails;
+    auto querySwapChainSupport(vk::PhysicalDevice device) const -> SwapChainSupportDetails;
 
-    auto is_device_suitable(vk::PhysicalDevice device) -> bool;
+    auto isDeviceSuitable(vk::PhysicalDevice device) const -> bool;
 
     /* Surface Format = Color Depth */
-    static auto choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) -> vk::SurfaceFormatKHR;
+    static auto chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats) -> vk::SurfaceFormatKHR;
 
     /*
      * VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted are transferred to screen right away, which may result in
@@ -113,12 +113,12 @@ private:
      * used to implement triple buffering, which allows you to avoid tearing with significantly less latency issues than
      * standard VSync that used double buffering.
      */
-    static auto choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes) -> vk::PresentModeKHR;
+    static auto chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes) -> vk::PresentModeKHR;
 
     /* Swap Extent us the resolution of the swap chain images and its almost
      * always exactly equal to the resolution of the window that we're drawing to.
      */
-    auto choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities) -> vk::Extent2D;
+    auto chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities) const -> vk::Extent2D;
 
-    auto create_shader_module(const std::vector<char>& code) -> vk::ShaderModule;
+    auto createShaderModule(const std::vector<char>& code) const -> vk::ShaderModule;
 };
