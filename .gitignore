@@ -1,20 +1,6 @@
 ## Build files
-/out
-/build
-**/bin/**
-**/obj/**
-sandbox/assets/scripts/**
-
-/rune/bin
-/rune/bin-int
-/sandbox/bin
-/sandbox/bin-int
-/rune/lib/glad/bin
-/rune/lib/glad/bin-int
-/rune/lib/spirv_reflect/bin
-/rune/lib/spirv_reflect/bin-int
-**/obj/**
-sandbox/assets/scripts/**
+bin/
+bin-int/
 
 ## VS Project Files
 *.sln

@@ -1,3 +1,5 @@
+VULKAN_SDK = os.getenv("VULKAN_SDK")
+
 workspace "VulkanHelloTriangle"
     architecture "x64"
     targetdir "build"
@@ -34,12 +36,21 @@ project "VulkanHelloTriangle"
 
     externalincludedirs
     {
-        
+        "%{VULKAN_SDK}/Include",
+        "libs/glfw/include",
+        "libs/glm/include"
+    }
+
+    libdirs
+    {
+        "%{VULKAN_SDK}/Lib",
+        "libs/glfw/lib"
     }
 
     links
     {
-        
+        "vulkan-1",
+        "glfw3"
     }
 
     filter "system:windows"
