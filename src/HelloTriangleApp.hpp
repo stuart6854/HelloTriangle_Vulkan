@@ -1,25 +1,11 @@
-//
-// Created by stuart on 17/08/2020.
-//
-
-#ifndef _HELLOTRIANGLE_HELLOTRIANGLEAPP_H
-#define _HELLOTRIANGLE_HELLOTRIANGLEAPP_H
+#pragma once
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#define VULKAN_HPP_NO_NODISCARD_WARNINGS
 #include <vulkan/vulkan.hpp>
 
 #include <vector>
-
-// TODO: Look into Validation Layers
-// TODO: Look into Extensions
-// TODO: Look into Queue Families
-// TODO: Look into Physical Devices
-// TODO: Look into Physical Device Features
-// TODO: Look into Logical Devices
-// TODO: Look into Surfaces
 
 struct QueueFamilyIndices;
 struct SwapChainSupportDetails;
@@ -117,8 +103,7 @@ private:
     auto is_device_suitable(vk::PhysicalDevice device) -> bool;
 
     /* Surface Format = Color Depth */
-    static auto choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
-        -> vk::SurfaceFormatKHR;
+    static auto choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) -> vk::SurfaceFormatKHR;
 
     /*
      * VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted are transferred to screen right away, which may result in
@@ -128,8 +113,7 @@ private:
      * used to implement triple buffering, which allows you to avoid tearing with significantly less latency issues than
      * standard VSync that used double buffering.
      */
-    static auto choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes)
-        -> vk::PresentModeKHR;
+    static auto choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes) -> vk::PresentModeKHR;
 
     /* Swap Extent us the resolution of the swap chain images and its almost
      * always exactly equal to the resolution of the window that we're drawing to.
@@ -138,5 +122,3 @@ private:
 
     auto create_shader_module(const std::vector<char>& code) -> vk::ShaderModule;
 };
-
-#endif  //_HELLOTRIANGLE_HELLOTRIANGLEAPP_H

@@ -2,7 +2,7 @@
 // Created by stuart on 17/08/2020.
 //
 
-#include "HelloTriangleApp.h"
+#include "HelloTriangleApp.hpp"
 
 #include <algorithm>
 #include <cstdint>
