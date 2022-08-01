@@ -14,7 +14,7 @@ constexpr uint32_t HEIGHT = 600;
 
 const std::vector VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
 
-const std::vector<const char*> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+const std::vector DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME };
 
 struct QueueFamilyIndices
 {
@@ -109,7 +109,7 @@ void HelloTriangleApp::createVulkanInstance()
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    appInfo.apiVersion = VK_API_VERSION_1_3;
 
     // This struct tells the Vulkan driver which global (entire program)
     // extensions and validation layers we want to use. This is NOT optional.
@@ -214,9 +214,11 @@ void HelloTriangleApp::createLogicalDevice()
     //       However, it is still a good idea to set them anyway to be
     //       compatible with older implementations.
 
-    vk::DeviceCreateInfo a{};
+    vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
+    dynamicRenderingFeatures.dynamicRendering = true;
 
     vk::DeviceCreateInfo createInfo{};
+    createInfo.pNext = &dynamicRenderingFeatures;
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
     createInfo.pEnabledFeatures = &deviceFeatures;
@@ -511,10 +513,15 @@ void HelloTriangleApp::createGraphicsPipeline()
 
     /* Create Pipeline */
 
+    vk::PipelineRenderingCreateInfo pipelineRenderingInfo{};
+    pipelineRenderingInfo.colorAttachmentCount = 1;
+    pipelineRenderingInfo.pColorAttachmentFormats = &m_swapChainImageFormat;
+
     vk::GraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.stageCount = 2;
     pipelineInfo.pStages = shaderStages.data();
 
+    pipelineInfo.pNext = &pipelineRenderingInfo;
     pipelineInfo.pVertexInputState = &vertexInputInfo;
     pipelineInfo.pInputAssemblyState = &inputAssembly;
     pipelineInfo.pViewportState = &viewportState;
@@ -526,7 +533,7 @@ void HelloTriangleApp::createGraphicsPipeline()
 
     pipelineInfo.layout = m_pipelineLayout;
 
-    pipelineInfo.renderPass = m_renderPass;
+    // pipelineInfo.renderPass = m_renderPass;
     pipelineInfo.subpass = 0;  // Index of the subpass where this graphics pipeline will be used
 
     // Vulkan allows you to create a new graphics pipeline by deriving from an
@@ -592,7 +599,8 @@ void HelloTriangleApp::createCommandBuffers()
             throw std::runtime_error("Failed to begin recording command buffer!");
         }
 
-        vk::RenderPassBeginInfo renderPassInfo{};
+#if 0
+		vk::RenderPassBeginInfo renderPassInfo{};
         renderPassInfo.renderPass = m_renderPass;
         renderPassInfo.framebuffer = m_swapChainFramebuffers[i];
 
@@ -606,6 +614,39 @@ void HelloTriangleApp::createCommandBuffers()
         renderPassInfo.pClearValues = &clearValue;
 
         m_commandBuffers[i].beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
+#endif  // 0
+
+        {
+            vk::ImageMemoryBarrier barrier{};
+            barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+            barrier.oldLayout = vk::ImageLayout::eUndefined;
+            barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+            barrier.image = m_swapChainImages[i];
+            barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+            barrier.subresourceRange.baseMipLevel = 0;
+            barrier.subresourceRange.levelCount = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount = 1;
+
+            m_commandBuffers[i].pipelineBarrier(
+                vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, {}, barrier);
+        }
+
+        vk::RenderingAttachmentInfo colorAttachmentInfo{};
+        colorAttachmentInfo.imageView = m_swapChainImageViews[i];
+        colorAttachmentInfo.imageLayout = vk::ImageLayout::eAttachmentOptimal;
+        colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
+        colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
+        colorAttachmentInfo.clearValue.color.setFloat32({ 0.232f, 0.304f, 0.540f, 1.0f });
+
+        vk::RenderingInfo renderingInfo{};
+        renderingInfo.renderArea.offset = vk::Offset2D(0, 0);
+        renderingInfo.renderArea.extent = vk::Extent2D(WIDTH, HEIGHT);
+        renderingInfo.layerCount = 1;
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachments = &colorAttachmentInfo;
+
+        m_commandBuffers[i].beginRendering(renderingInfo);
 
         // Basic drawing commands
 
@@ -613,7 +654,27 @@ void HelloTriangleApp::createCommandBuffers()
 
         m_commandBuffers[i].draw(3, 1, 0, 0);
 
+#if 0
         m_commandBuffers[i].endRenderPass();
+#endif
+
+        m_commandBuffers[i].endRendering();
+
+        {
+            vk::ImageMemoryBarrier barrier{};
+            barrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+            barrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
+            barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
+            barrier.image = m_swapChainImages[i];
+            barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+            barrier.subresourceRange.baseMipLevel = 0;
+            barrier.subresourceRange.levelCount = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount = 1;
+
+            m_commandBuffers[i].pipelineBarrier(
+                vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eBottomOfPipe, {}, {}, {}, barrier);
+        }
 
         m_commandBuffers[i].end();
     }
