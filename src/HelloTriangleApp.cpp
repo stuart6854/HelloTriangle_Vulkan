@@ -4,6 +4,9 @@
 
 #include "HelloTriangleApp.hpp"
 
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
+
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -235,6 +238,16 @@ void HelloTriangleApp::createLogicalDevice()
 
     m_graphicsQueue = m_device.getQueue(indices.graphicsFamily.value(), 0);
     m_presentQueue = m_device.getQueue(indices.presentFamily.value(), 0);
+}
+
+void HelloTriangleApp::createAllocator()
+{
+    VmaAllocatorCreateInfo allocatorInfo{};
+    allocatorInfo.instance = m_instance;
+    allocatorInfo.physicalDevice = m_physicalDevice;
+    allocatorInfo.device = m_device;
+
+    vmaCreateAllocator(&allocatorInfo, &m_allocator);
 }
 
 void HelloTriangleApp::createSwapChain()
@@ -713,6 +726,7 @@ void HelloTriangleApp::initVulkan()
     createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
+    createAllocator();
     createSwapChain();
     createImageViews();
     // createRenderPass();
@@ -848,6 +862,8 @@ void HelloTriangleApp::cleanup() const
     }
 
     m_device.destroy(m_commandPool, nullptr);
+
+    vmaDestroyAllocator(m_allocator);
 
     // Destroy logical device
     m_device.destroy(nullptr);

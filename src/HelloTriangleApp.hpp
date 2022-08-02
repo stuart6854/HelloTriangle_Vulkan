@@ -4,6 +4,7 @@
 #include <glfw/glfw3.h>
 
 #include <vulkan/vulkan.hpp>
+#include <vma/vk_mem_alloc.h>
 
 #include <vector>
 
@@ -21,6 +22,7 @@ private:
     vk::Instance m_instance;
     vk::PhysicalDevice m_physicalDevice;
     vk::Device m_device;
+    VmaAllocator m_allocator;
     vk::Queue m_graphicsQueue;
 
     vk::SurfaceKHR m_surface;
@@ -32,9 +34,9 @@ private:
     vk::Extent2D m_swapChainExtent;
 
     std::vector<vk::ImageView> m_swapChainImageViews;
-    //std::vector<vk::Framebuffer> m_swapChainFramebuffers;
+    // std::vector<vk::Framebuffer> m_swapChainFramebuffers;
 
-    //vk::RenderPass m_renderPass;
+    // vk::RenderPass m_renderPass;
     vk::PipelineLayout m_pipelineLayout;
     vk::Pipeline m_graphicsPipeline;
 
@@ -61,15 +63,17 @@ private:
 
     void createLogicalDevice();
 
+    void createAllocator();
+
     void createSwapChain();
 
     void createImageViews();
 
-    //void createRenderPass();
+    // void createRenderPass();
 
     void createGraphicsPipeline();
 
-    //void createFramebuffers();
+    // void createFramebuffers();
 
     void createCommandPool();
 
