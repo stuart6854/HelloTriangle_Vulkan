@@ -32,9 +32,9 @@ private:
     vk::Extent2D m_swapChainExtent;
 
     std::vector<vk::ImageView> m_swapChainImageViews;
-    std::vector<vk::Framebuffer> m_swapChainFramebuffers;
+    //std::vector<vk::Framebuffer> m_swapChainFramebuffers;
 
-    vk::RenderPass m_renderPass;
+    //vk::RenderPass m_renderPass;
     vk::PipelineLayout m_pipelineLayout;
     vk::Pipeline m_graphicsPipeline;
 
@@ -65,11 +65,11 @@ private:
 
     void createImageViews();
 
-    void createRenderPass();
+    //void createRenderPass();
 
     void createGraphicsPipeline();
 
-    void createFramebuffers();
+    //void createFramebuffers();
 
     void createCommandPool();
 

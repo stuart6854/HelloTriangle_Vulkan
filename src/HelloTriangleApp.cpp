@@ -353,6 +353,7 @@ void HelloTriangleApp::createImageViews()
     }
 }
 
+#if 0
 void HelloTriangleApp::createRenderPass()
 {
     /* Attachment Description */
@@ -411,6 +412,7 @@ void HelloTriangleApp::createRenderPass()
 
     m_renderPass = m_device.createRenderPass(renderPassInfo);
 }
+#endif  // 0
 
 void HelloTriangleApp::createGraphicsPipeline()
 {
@@ -547,6 +549,7 @@ void HelloTriangleApp::createGraphicsPipeline()
     m_device.destroy(fragShaderModule);
 }
 
+#if 0
 void HelloTriangleApp::createFramebuffers()
 {
     m_swapChainFramebuffers.resize(m_swapChainImageViews.size());
@@ -565,6 +568,7 @@ void HelloTriangleApp::createFramebuffers()
         m_swapChainFramebuffers[i] = m_device.createFramebuffer(framebufferInfo);
     }
 }
+#endif  // 0
 
 void HelloTriangleApp::createCommandPool()
 {
@@ -578,7 +582,7 @@ void HelloTriangleApp::createCommandPool()
 
 void HelloTriangleApp::createCommandBuffers()
 {
-    m_commandBuffers.resize(m_swapChainFramebuffers.size());
+    m_commandBuffers.resize(m_swapChainImages.size());
 
     vk::CommandBufferAllocateInfo allocInfo{};
     allocInfo.commandPool = m_commandPool;
@@ -711,9 +715,9 @@ void HelloTriangleApp::initVulkan()
     createLogicalDevice();
     createSwapChain();
     createImageViews();
-    createRenderPass();
+    // createRenderPass();
     createGraphicsPipeline();
-    createFramebuffers();
+    // createFramebuffers();
     createCommandPool();
     createCommandBuffers();
     createSyncObjects();
@@ -809,16 +813,18 @@ void HelloTriangleApp::mainLoop()
 
 void HelloTriangleApp::cleanupSwapChain() const
 {
-    for (auto framebuffer : m_swapChainFramebuffers)
+#if 0
+	for (auto framebuffer : m_swapChainFramebuffers)
     {
         m_device.destroy(framebuffer, nullptr);
     }
+#endif  // 0
 
     m_device.freeCommandBuffers(m_commandPool, static_cast<uint32_t>(m_commandBuffers.size()), m_commandBuffers.data());
 
     m_device.destroy(m_graphicsPipeline, nullptr);
     m_device.destroy(m_pipelineLayout, nullptr);
-    m_device.destroy(m_renderPass, nullptr);
+    // m_device.destroy(m_renderPass, nullptr);
 
     // Destroy ImageViews
     for (auto imageView : m_swapChainImageViews)
@@ -877,13 +883,13 @@ void HelloTriangleApp::recreateSwapChain()
 
     createSwapChain();
     createImageViews();  // Based on swap chain
-    createRenderPass();  // Depends on swap chain image formats
-    // Pipeline must be rebuilt because Viewport and Scissor rectangle
-    // size are specified during graphics pipeline creation.
-    // Note: Could be avoided by using dynamic state for the viewports and
-    // scissor rectangles.
+    // createRenderPass();  // Depends on swap chain image formats
+    //  Pipeline must be rebuilt because Viewport and Scissor rectangle
+    //  size are specified during graphics pipeline creation.
+    //  Note: Could be avoided by using dynamic state for the viewports and
+    //  scissor rectangles.
     createGraphicsPipeline();
-    createFramebuffers();    // Depends on swap chain images
+    // createFramebuffers();    // Depends on swap chain images
     createCommandBuffers();  // Depends on swap chain images
 }
 
