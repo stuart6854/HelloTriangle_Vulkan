@@ -34,9 +34,7 @@ private:
     vk::Extent2D m_swapChainExtent;
 
     std::vector<vk::ImageView> m_swapChainImageViews;
-    // std::vector<vk::Framebuffer> m_swapChainFramebuffers;
 
-    // vk::RenderPass m_renderPass;
     vk::PipelineLayout m_pipelineLayout;
     vk::Pipeline m_graphicsPipeline;
     vk::Buffer m_vertexBuffer;
@@ -57,49 +55,30 @@ private:
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
-    void initWindow();
+    void init_window();
 
-    void createVulkanInstance();
-
-    void createSurface();
-
-    void pickPhysicalDevice();
-
-    void createLogicalDevice();
-
-    void createAllocator();
-
-    void createSwapChain();
-
-    void createImageViews();
-
-    // void createRenderPass();
-
-    void createGraphicsPipeline();
-
-    // void createFramebuffers();
-
+    void create_instance();
+    void create_surface();
+    void pick_physical_device();
+    void create_device();
+    void create_allocator();
+    void create_swapchain();
+    void create_image_views();
+    void create_graphics_pipeline();
     void create_vertex_buffer();
-
     void create_index_buffer();
-
+    void create_command_pool();
     void create_command_buffers();
+    void create_sync_objects();
 
-    void createCommandBuffers();
+    void init_vulkan();
+    void draw_frame();
+    void main_loop();
 
-    void createSyncObjects();
-
-    void initVulkan();
-
-    void drawFrame();
-
-    void mainLoop();
-
-    void cleanupSwapChain() const;
-
+    void clean_swap_chain() const;
     void cleanup() const;
 
-    void recreateSwapChain();
+    void recreate_swapchain();
 
     /* Checks if all of the requested layers are available */
     static auto check_validation_layer_support() -> bool;
@@ -115,8 +94,7 @@ private:
     auto is_device_suitable(vk::PhysicalDevice device) -> bool;
 
     /* Surface Format = Color Depth */
-    static auto choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
-        -> vk::SurfaceFormatKHR;
+    static auto choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) -> vk::SurfaceFormatKHR;
 
     /*
      * vk::PresentModeKHR::eImmediate: Images submitted are transferred to screen right away, which may result in
@@ -126,15 +104,14 @@ private:
      * Vvk::PresentModeKHR::eMailbox: Can be used to implement triple buffering, which allows you to avoid tearing with
      * significantly less latency issues than standard VSync that used double buffering.
      */
-    static auto choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes)
-        -> vk::PresentModeKHR;
+    static auto choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availablePresentModes) -> vk::PresentModeKHR;
 
     /* Swap Extent us the resolution of the swap chain images and its almost
      * always exactly equal to the resolution of the window that we're drawing to.
      */
     auto choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities) -> vk::Extent2D;
 
-    auto create_shader_module(const std::vector<char>& code) -> vk::ShaderModule;
+    auto create_shader_module(const std::vector<uint32_t>& code) -> vk::ShaderModule;
 
     auto find_memory_type(uint32_t typeFilter, const vk::MemoryPropertyFlags& properties) -> uint32_t;
 
