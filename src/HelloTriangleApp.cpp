@@ -19,7 +19,10 @@ const uint32_t HEIGHT = 600;
 
 const std::vector VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
 
-const std::vector DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME };
+const std::vector DEVICE_EXTENSIONS = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+};
 
 struct QueueFamilyIndices
 {
@@ -52,10 +55,8 @@ struct Vertex
     {
         vk::VertexInputBindingDescription bindingDesc{};
         bindingDesc.binding = 0;
-        bindingDesc.stride = sizeof(Vertex);  // Bytes from one entry to the next
+        bindingDesc.stride = sizeof(Vertex);
 
-        // vk::VertexInputRate::eVertex = Move to the next data entry after each vertex
-        // vk::VertexInputRate::eInstance = Move to the next data entry after each instance
         bindingDesc.inputRate = vk::VertexInputRate::eVertex;
 
         return bindingDesc;
@@ -79,12 +80,16 @@ struct Vertex
     }
 };
 
-const std::vector<Vertex> VERTICES = { { { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-                                       { { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
-                                       { { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
-                                       { { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f } } };
+const std::vector<Vertex> VERTICES = {
+    { { -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+    { { 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
+    { { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
+    { { -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f } },
+};
 
-const std::vector<uint16_t> INDICES = { 0, 1, 2, 2, 3, 0 };
+const std::vector<uint16_t> INDICES = {
+    0, 1, 2, 2, 3, 0,
+};
 
 static auto read_shader_binary(const std::string& filename) -> std::vector<uint32_t>
 {
@@ -122,16 +127,10 @@ void HelloTriangleApp::run()
 
 void HelloTriangleApp::init_window()
 {
-    // Initialise GLFW
     glfwInit();
 
-    // Tell GLFW not to create an OpenGL context
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    // Handling resized windows requires special care, so disable it
-    //    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-    // Create GLFW window
     m_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan - Hello Triangle", nullptr, nullptr);
 
     glfwSetWindowUserPointer(m_window, this);
@@ -147,11 +146,6 @@ void HelloTriangleApp::create_instance()
     }
 #endif
 
-    // list_supported_extensions();
-
-    // Fill a struct with some info about our application. This is technically
-    // optional, but may provide some useful information to the driver in order
-    // to optimise our specific application.
     vk::ApplicationInfo appInfo{};
     appInfo.pApplicationName = "Vulkan - Hello Triangle";
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -159,14 +153,9 @@ void HelloTriangleApp::create_instance()
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_3;
 
-    // This struct tells the Vulkan driver which global (entire program)
-    // extensions and validation layers we want to use. This is NOT optional.
     vk::InstanceCreateInfo instanceCreateInfo{};
     instanceCreateInfo.pApplicationInfo = &appInfo;
 
-    // Specify the desired global extensions. Vulkan is a platform agnostic API,
-    // which means we need a an extension to interface with the window system.
-    // GLFW provides a handy function that returns the extensions it needs.
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
@@ -174,12 +163,10 @@ void HelloTriangleApp::create_instance()
     instanceCreateInfo.ppEnabledExtensionNames = glfwExtensions;
 
 #if _DEBUG
-    // What global validation layers to enable
     instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION_LAYERS.size());
     instanceCreateInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
 #endif
 
-    // Create the Vulkan instance
     m_instance = createInstance(instanceCreateInfo);
 }
 
@@ -196,28 +183,13 @@ void HelloTriangleApp::create_surface()
 
 void HelloTriangleApp::pick_physical_device()
 {
-    // After initialising Vulkan, we need to look for and select
-    // a graphics card in the system that supports the features we need.
-    // In fact we can select any number of graphics cards and use them
-    // simultaneously, but here we will stick with the first graphics card.
-
-    // The graphics card we select will be stored in a 'vk::PhysicalDevice'
-    // handle. This object will be implicitly destroyed when the 'vk::Instance'
-    // is destroyed, so we don't need to do it ourselves in cleanup().
-
-    // Query the instance for all physical devices
     std::vector<vk::PhysicalDevice> devices = m_instance.enumeratePhysicalDevices();
 
-    // If there are 0 devices with Vulkan support then there is no point in
-    // continuing
     if (devices.empty())
     {
         throw std::runtime_error("Failed to find GPUs with Vulkan support!");
     }
 
-    // Now we evaluate each of them and check if they are suitable for the
-    // operations we want to perform, because not all graphics cards are created
-    // equal.
     for (const auto& device : devices)
     {
         if (is_device_suitable(device))
@@ -238,8 +210,6 @@ void HelloTriangleApp::create_device()
     float queuePriority = 1.0f;
     for (uint32_t queueFamily : uniqueQueueFamilies)
     {
-        // This structure describes the number of queues we
-        // want for a single queue family
         vk::DeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.queueFamilyIndex = queueFamily;
         queueCreateInfo.queueCount = 1;
@@ -247,20 +217,7 @@ void HelloTriangleApp::create_device()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    // Next we need to specify the set of device features we'll be using.
-    // These were queried for earlier with PhysicalDevice.getFeatures()
     vk::PhysicalDeviceFeatures deviceFeatures{};
-
-    // First add pointers to the queue creation info and device features structs
-    // The remainder of the information bears resemblance to
-    // vk::InstanceCreateInfo struct and requires you to specify extensions and
-    // validation layers. The difference is that these are device specific this
-    // time. NOTE: Newer versions of Vulkan removed the distinction between
-    // Instance and Device specific validation layers.
-    //       This means that the enabledLayerCount and ppEnabledLayerNames
-    //       fields of vk::CreateInfo are ignored by up-to-date implementations.
-    //       However, it is still a good idea to set them anyway to be
-    //       compatible with older implementations.
 
     vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{};
     dynamicRenderingFeatures.dynamicRendering = true;
@@ -278,7 +235,6 @@ void HelloTriangleApp::create_device()
     createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
 #endif
 
-    // Instantiate the Logical Device
     m_device = m_physicalDevice.createDevice(createInfo);
 
     m_graphicsQueue = m_device.getQueue(indices.graphicsFamily.value(), 0);
@@ -303,10 +259,8 @@ void HelloTriangleApp::create_swapchain()
     vk::PresentModeKHR presentMode = choose_swap_present_mode(swapChainSupport.presentModes);
     vk::Extent2D extent = choose_swap_extent(swapChainSupport.capabilities);
 
-    // Decide how many images to have in swap chain
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 
-    // We should also make sure not to exceed the maximum number of images
     if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
     {
         imageCount = swapChainSupport.capabilities.maxImageCount;
@@ -319,59 +273,30 @@ void HelloTriangleApp::create_swapchain()
     createInfo.imageFormat = surfaceFormat.format;
     createInfo.imageColorSpace = surfaceFormat.colorSpace;
     createInfo.imageExtent = extent;
-    createInfo.imageArrayLayers = 1;                                   // Amount of layers each image consists of
-    createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;  // The kind of operations
-    // we'll use the swap chain
-    // images for
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
 
-    // Specify how to handle swap chain images that will be used across multiple
-    // queue families.
     QueueFamilyIndices indices = find_queue_families(m_physicalDevice);
     std::vector<uint32_t> queueFamilyIndices = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
     if (indices.graphicsFamily != indices.presentFamily)
     {
-        // An image is owned by one family queue at a time and ownership must be
-        // explicitly transferred before using it in another queue family. This
-        // option offers the best performance.
         createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
         createInfo.queueFamilyIndexCount = 2;
         createInfo.pQueueFamilyIndices = queueFamilyIndices.data();
     }
     else
     {
-        // Images can be used across multiple queue families without explicit
-        // ownership transfers
         createInfo.imageSharingMode = vk::SharingMode::eExclusive;
-        createInfo.queueFamilyIndexCount = 0;      // Optional
-        createInfo.pQueueFamilyIndices = nullptr;  // Optional
     }
 
-    // We can specify that a certain transform should be applied to images in
-    // the swap chain if its supported, like a 90 degree clockwise rotation or
-    // horizontal flip. To specify that you don't want any transform, simply
-    // specify the current transformation.
     createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-
-    // Specifies if the alpha channel should be used for blending space with
-    // other windows in the window system. You'll almost always want to simply
-    // ignore the alpha channel, hence vk::CompositeAlphaFlagBitsKHR::eOpaque.
     createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-
     createInfo.presentMode = presentMode;
-    // If TRUE we don't care about the color of pixels that are obscured, for
-    // example because another window is in front of them.
     createInfo.clipped = VK_TRUE;
-
-    // Its possible that your swap chain becomes invalid or unoptimised while
-    // your application is running, for example because the window was resized.
-    // In that case the swap chain actually needs to be recreated from scratch
-    // and a reference the old one must be specified in this field.
-    //    createInfo.oldSwapchain = {};
 
     m_swapChain = m_device.createSwapchainKHR(createInfo);
 
-    // Get the swap chain images
     m_swapChainImages = m_device.getSwapchainImagesKHR(m_swapChain);
 
     m_swapChainImageFormat = surfaceFormat.format;
@@ -386,21 +311,12 @@ void HelloTriangleApp::create_image_views()
     {
         vk::ImageViewCreateInfo createInfo{};
         createInfo.image = m_swapChainImages[i];
-        // Specify how the image data should be interpreted
         createInfo.viewType = vk::ImageViewType::e2D;
         createInfo.format = m_swapChainImageFormat;
-
-        // The components field allows you to swizzle the color channels around.
-        // Eg. You can map all the channels to the red channel for a monochrome
-        // texture.
-        //     You can also map constant values of 0 and 1 to a channel.
         createInfo.components.r = vk::ComponentSwizzle::eIdentity;
         createInfo.components.g = vk::ComponentSwizzle::eIdentity;
         createInfo.components.b = vk::ComponentSwizzle::eIdentity;
         createInfo.components.a = vk::ComponentSwizzle::eIdentity;
-
-        // The subresourceRange field describes what the image's purpose is and
-        // which part of the image should be accessed
         createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
         createInfo.subresourceRange.baseMipLevel = 0;
         createInfo.subresourceRange.levelCount = 1;
@@ -422,13 +338,7 @@ void HelloTriangleApp::create_graphics_pipeline()
     vk::ShaderModule fragShaderModule = create_shader_module(fragShaderCode);
 
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{};
-    vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;  // Which pipeline stage the
-    // shader will belong to
-
-    // Specify the shader module containing the code, and the function to
-    // invoke, known as the entrypoint. This means that its possible to combine
-    // multiple fragment shaders into a single shader module and use different
-    // entry points to differentiate between their behaviours.
+    vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
     vertShaderStageInfo.module = vertShaderModule;
     vertShaderStageInfo.pName = "main";
 
@@ -478,16 +388,14 @@ void HelloTriangleApp::create_graphics_pipeline()
 
     // Rasterizer
     vk::PipelineRasterizationStateCreateInfo rasterizer{};
-    rasterizer.depthClampEnable = VK_FALSE;           // Should clamp fragments beyond near/far planes?
-    rasterizer.rasterizerDiscardEnable = VK_FALSE;    // Should disable any output to framebuffer?
-    rasterizer.polygonMode = vk::PolygonMode::eFill;  // How are fragments generated? (Fill, Line,
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = vk::PolygonMode::eFill;
     // Point)
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = vk::CullModeFlagBits::eBack;  // Type of face culling to use
-    rasterizer.frontFace = vk::FrontFace::eClockwise;   // Specify the vertex order for faces to be
-    // considered front-facing
-    rasterizer.depthBiasEnable = VK_FALSE;  // The rasterizer can alter depth values by adding a constant
-    // value or biasing them based on the fragments slope.
+    rasterizer.cullMode = vk::CullModeFlagBits::eBack;
+    rasterizer.frontFace = vk::FrontFace::eClockwise;
+    rasterizer.depthBiasEnable = VK_FALSE;
 
     // Multisampling
     vk::PipelineMultisampleStateCreateInfo multisampling{};
@@ -533,16 +441,8 @@ void HelloTriangleApp::create_graphics_pipeline()
     pipelineInfo.pDepthStencilState = nullptr;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = nullptr;
-
     pipelineInfo.layout = m_pipelineLayout;
-
-    // pipelineInfo.renderPass = m_renderPass;
-    pipelineInfo.subpass = 0;  // Index of the subpass where this graphics pipeline will be used
-
-    // Vulkan allows you to create a new graphics pipeline by deriving from an
-    // existing pipeline
-    //    pipelineInfo.basePipelineHandle = {};
-    //    pipelineInfo.basePipelineIndex = -1;
+    pipelineInfo.subpass = 0;
 
     m_graphicsPipeline = m_device.createGraphicsPipeline({}, pipelineInfo).value;
 
@@ -590,7 +490,7 @@ void HelloTriangleApp::create_vertex_buffer()
 
 void HelloTriangleApp::create_index_buffer()
 {
-    vk::DeviceSize bufferSize = sizeof(INDICES[0]) * INDICES.size();  // Buffer size in bytes
+    vk::DeviceSize bufferSize = sizeof(INDICES[0]) * INDICES.size();
 
     vk::Buffer stagingBuffer;
     vk::DeviceMemory stagingBufferMemory;
@@ -753,9 +653,6 @@ void HelloTriangleApp::draw_frame()
 
     if (result == vk::Result::eErrorOutOfDateKHR)
     {
-        // The swap chain has become incompatible with the surface
-        // and can no longer be used for rendering.
-        // Usually happens after window resize.
         recreate_swapchain();
         return;
     }
@@ -764,13 +661,11 @@ void HelloTriangleApp::draw_frame()
         throw std::runtime_error("Failed to acquire swap chain image!");
     }
 
-    // Check if a previous frame is using this image (ie. there is its fence to
-    // wait on)
     if (m_imagesInFlight[imageIndex])
     {
         m_device.waitForFences(1, &m_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
-    // Mark the image as now being in use by this frame
+
     m_imagesInFlight[imageIndex] = m_inFlightFences[m_currentFrame];
 
     vk::SubmitInfo submitInfo{};
@@ -792,13 +687,10 @@ void HelloTriangleApp::draw_frame()
 
     m_graphicsQueue.submit(submitInfo, m_inFlightFences[m_currentFrame]);
 
-    vk::PresentInfoKHR presentInfo{};
-
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = signalSemaphores.data();  // Which semaphore to wait on before
-                                                            // presentation can happen
-
     std::vector<vk::SwapchainKHR> swapChains = { m_swapChain };
+    vk::PresentInfoKHR presentInfo{};
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signalSemaphores.data();
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = swapChains.data();
     presentInfo.pImageIndices = &imageIndex;
@@ -820,12 +712,9 @@ void HelloTriangleApp::draw_frame()
 
 void HelloTriangleApp::main_loop()
 {
-    // Check if user tried to close the window
     while (!glfwWindowShouldClose(m_window))
     {
-        // Poll for window events
         glfwPollEvents();
-
         draw_frame();
     }
 
@@ -834,26 +723,16 @@ void HelloTriangleApp::main_loop()
 
 void HelloTriangleApp::clean_swap_chain() const
 {
-#if 0
-	for (auto framebuffer : m_swapChainFramebuffers)
-    {
-        m_device.destroy(framebuffer, nullptr);
-    }
-#endif  // 0
-
     m_device.freeCommandBuffers(m_commandPool, static_cast<uint32_t>(m_commandBuffers.size()), m_commandBuffers.data());
 
     m_device.destroy(m_graphicsPipeline, nullptr);
     m_device.destroy(m_pipelineLayout, nullptr);
-    // m_device.destroy(m_renderPass, nullptr);
 
-    // Destroy ImageViews
     for (auto imageView : m_swapChainImageViews)
     {
         m_device.destroy(imageView, nullptr);
     }
 
-    // Destroy Swap Chain
     m_device.destroy(m_swapChain, nullptr);
 }
 
@@ -862,7 +741,6 @@ void HelloTriangleApp::cleanup() const
     clean_swap_chain();
 
     m_device.destroy(m_vertexBuffer);
-    // Free buffer memory
     m_device.free(m_vertexBufferMemory);
 
     m_device.destroy(m_indexBuffer);
@@ -879,19 +757,11 @@ void HelloTriangleApp::cleanup() const
 
     vmaDestroyAllocator(m_allocator);
 
-    // Destroy logical device
     m_device.destroy();
-
-    // Destroy the window surface
     m_instance.destroy(m_surface);
-
-    // Destroy Vulkan instance
     m_instance.destroy();
 
-    // Destroy our GLFW window
     glfwDestroyWindow(m_window);
-
-    // Terminate GLFW itself
     glfwTerminate();
 }
 
@@ -918,11 +788,8 @@ void HelloTriangleApp::recreate_swapchain()
 
 auto HelloTriangleApp::check_validation_layer_support() -> bool
 {
-    // Query validation layers
     std::vector<vk::LayerProperties> availableLayers = vk::enumerateInstanceLayerProperties();
 
-    // Now check if all the layers in VALIDATION_LAYERS exists in the
-    // availableLayers list.
     for (const char* layerName : VALIDATION_LAYERS)
     {
         bool layerFound = false;
@@ -947,7 +814,6 @@ auto HelloTriangleApp::check_validation_layer_support() -> bool
 
 void HelloTriangleApp::listSupportedExtensions()
 {
-    // Query Vulkan for supported extensions
     std::vector<vk::ExtensionProperties> extensions = vk::enumerateInstanceExtensionProperties();
 
     std::cout << "Vulkan supported extensions:\n";
@@ -1008,14 +874,8 @@ auto HelloTriangleApp::check_device_extension_support(vk::PhysicalDevice device)
 auto HelloTriangleApp::query_swap_chain_support(vk::PhysicalDevice device) -> SwapChainSupportDetails
 {
     SwapChainSupportDetails details;
-
-    // Query supported capabilities
     details.capabilities = device.getSurfaceCapabilitiesKHR(m_surface);
-
-    // Query supported surface formats
     details.formats = device.getSurfaceFormatsKHR(m_surface);
-
-    // Query supported presentation modes
     details.presentModes = device.getSurfacePresentModesKHR(m_surface);
 
     return details;
@@ -1023,20 +883,6 @@ auto HelloTriangleApp::query_swap_chain_support(vk::PhysicalDevice device) -> Sw
 
 auto HelloTriangleApp::is_device_suitable(vk::PhysicalDevice device) -> bool
 {
-    // To evaluate the suitability of a device we start by querying for some
-    // details.
-
-    // Basic device properties like the name, type and supported Vulkan version
-    // can be queried using PhysicalDevice.getProperties(deviceProperties)
-    //    vk::PhysicalDeviceProperties deviceProperties;
-    //    device.getProperties(deviceProperties);
-
-    // The support for optional features like texture compression, 64bit floats
-    // and multi-viewport rendering (useful for VR) can be queried using
-    // PhysicalDevice.getFeatures()
-    //    vk::PhysicalDeviceFeatures deviceFeatures;
-    //    device.getFeatures(deviceFeatures);
-
     QueueFamilyIndices indices = find_queue_families(device);
 
     bool extensionsSupported = check_device_extension_support(device);
@@ -1089,9 +935,6 @@ auto HelloTriangleApp::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capa
     glfwGetFramebufferSize(m_window, &width, &height);
 
     vk::Extent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
-
-    // Use Min/Max to clamp the values between the allowed minimum and
-    // maximum extents that are supported
 
     actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
     actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
