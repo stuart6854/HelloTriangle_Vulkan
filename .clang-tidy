@@ -1,1 +1,0 @@
-Checks: '*,-android-*,-darwin-*,-fuchsia-*,-zircon-*,-llvm*,-google-*,-modernize-use-nodiscard,-*-avoid-c-arrays,-misc-*,-cert-*,-*-uppercase-literal-suffix,-hicpp-signed-bitwise,-cppcoreguidelines-pro-type-union-access,-cppcoreguidelines-pro-type-reinterpret-cast,-readability-implicit-bool-conversion'
