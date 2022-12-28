@@ -38,7 +38,8 @@ project "VulkanHelloTriangle"
     {
         "%{VULKAN_SDK}/Include",
         "libs/glfw/include",
-        "libs/glm/include"
+        "libs/glm/include",
+        "libs/stb/include"
     }
 
     libdirs

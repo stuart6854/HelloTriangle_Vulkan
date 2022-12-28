@@ -77,32 +77,17 @@ private:
     void create_allocator();
     void create_swapchain();
     void create_image_views();
-
-    void create_render_pass();
-
     void create_descriptor_set_layout();
-
     void create_graphics_pipeline();
-
-    void create_framebuffers();
-
     void create_command_pool();
-
     void create_texture_image();
-
     void create_texture_image_view();
-    
     void create_texture_sampler();
-    
     void create_vertex_buffer();
     void create_index_buffer();
-
     void create_uniform_buffers();
-
     void create_descriptor_pool();
-
     void create_descriptor_sets();
-    void create_command_pool();
     void create_command_buffers();
     void create_sync_objects();
 
@@ -176,10 +161,7 @@ private:
 
     void copy_buffer_to_image(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
 
-    void transition_image_layout(vk::Image image,
-                                 vk::Format format,
-                                 vk::ImageLayout oldLayout,
-                                 vk::ImageLayout newLayout);
-    
+    void transition_image_layout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+
     auto create_image_view(vk::Image image, vk::Format format) -> vk::ImageView;
 };

@@ -428,9 +428,8 @@ void HelloTriangleApp::create_graphics_pipeline()
     rasterizer.depthClampEnable = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = vk::PolygonMode::eFill;
-    // Point)
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = vk::CullModeFlagBits::eBack;
+    rasterizer.cullMode = vk::CullModeFlagBits::eNone;
     rasterizer.frontFace = vk::FrontFace::eClockwise;
     rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -557,16 +556,12 @@ void HelloTriangleApp::create_texture_image()
                  m_textureImage,
                  m_textureImageMemory);
 
+    transition_image_layout(m_textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+
+    copy_buffer_to_image(stagingBuffer, m_textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+
     transition_image_layout(
-        m_textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-
-    copy_buffer_to_image(
-        stagingBuffer, m_textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-
-    transition_image_layout(m_textureImage,
-                            vk::Format::eR8G8B8A8Srgb,
-                            vk::ImageLayout::eTransferDstOptimal,
-                            vk::ImageLayout::eShaderReadOnlyOptimal);
+        m_textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 
     m_device.destroy(stagingBuffer);
     m_device.free(stagingBufferMemory);
@@ -736,8 +731,7 @@ void HelloTriangleApp::create_descriptor_sets()
         descriptorWrites[1].descriptorCount = 1;
         descriptorWrites[1].pImageInfo = &imageInfo;
 
-        m_device.updateDescriptorSets(
-            static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+        m_device.updateDescriptorSets(static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 }
 
@@ -806,8 +800,7 @@ void HelloTriangleApp::create_command_buffers()
 
         m_commandBuffers[i].bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint16);
 
-        m_commandBuffers[i].bindDescriptorSets(
-            vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, 1, &m_descriptorSets[i], 0, nullptr);
+        m_commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, 1, &m_descriptorSets[i], 0, nullptr);
 
         m_commandBuffers[i].drawIndexed(static_cast<uint32_t>(INDICES.size()), 1, 0, 0, 0);
 
@@ -889,8 +882,7 @@ void HelloTriangleApp::update_uniform_buffer(uint32_t currentImage)
     UniformBufferObject ubo{};
     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj =
-        glm::perspective(glm::radians(45.0f), m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10.0f);
+    ubo.proj = glm::perspective(glm::radians(45.0f), m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10.0f);
 
     // GLM was designed for OpenGL, where the Y coordinate of the clip coordinates is inverted
     ubo.proj[1][1] *= -1.0f;
@@ -1056,10 +1048,9 @@ void HelloTriangleApp::recreate_swapchain()
     create_swapchain();
     create_image_views();
     create_graphics_pipeline();
-    create_framebuffers();     // Depends on swap chain images
-    create_descriptor_pool();  // Depends on swap chain images
-    create_descriptor_sets();  // Depends on swap chain images
-    create_command_buffers();  // Depends on swap chain images
+    create_descriptor_pool();
+    create_descriptor_sets();
+    create_command_buffers();
 }
 
 auto HelloTriangleApp::check_validation_layer_support() -> bool
@@ -1329,7 +1320,6 @@ void HelloTriangleApp::create_image(uint32_t width,
     imageInfo.format = format;
     imageInfo.tiling = tiling;
     imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-    // vk::ImageUsageFlagBits::eSampled allows shaders to access the image
     imageInfo.usage = usage;
     imageInfo.sharingMode = vk::SharingMode::eExclusive;
     imageInfo.samples = vk::SampleCountFlagBits::e1;
@@ -1369,10 +1359,7 @@ void HelloTriangleApp::copy_buffer_to_image(vk::Buffer buffer, vk::Image image, 
     end_single_time_commands(commandBuffer);
 }
 
-void HelloTriangleApp::transition_image_layout(vk::Image image,
-                                               vk::Format format,
-                                               vk::ImageLayout oldLayout,
-                                               vk::ImageLayout newLayout)
+void HelloTriangleApp::transition_image_layout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
 {
     vk::CommandBuffer commandBuffer = begin_single_time_commands();
 
@@ -1418,15 +1405,13 @@ void HelloTriangleApp::transition_image_layout(vk::Image image,
 
     end_single_time_commands(commandBuffer);
 }
+
 auto HelloTriangleApp::create_image_view(vk::Image image, vk::Format format) -> vk::ImageView
 {
     vk::ImageViewCreateInfo createInfo{};
     createInfo.image = image;
-    // Specify how the image data should be interpreted
     createInfo.viewType = vk::ImageViewType::e2D;
     createInfo.format = format;
-    // The subresourceRange field describes what the image's purpose is and
-    // which part of the image should be accessed
     createInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
     createInfo.subresourceRange.baseMipLevel = 0;
     createInfo.subresourceRange.levelCount = 1;
