@@ -35,10 +35,6 @@ private:
 
     std::vector<vk::ImageView> m_swapChainImageViews;
 
-    vk::DescriptorSetLayout m_descriptorSetLayout;
-    vk::PipelineLayout m_pipelineLayout;
-    vk::Pipeline m_graphicsPipeline;
-
     vk::Buffer m_vertexBuffer;
     vk::DeviceMemory m_vertexBufferMemory;
     vk::Buffer m_indexBuffer;
@@ -48,7 +44,6 @@ private:
     std::vector<vk::DeviceMemory> m_uniformBuffersMemory;
 
     vk::DescriptorPool m_descriptorPool;
-    std::vector<vk::DescriptorSet> m_descriptorSets;
 
     vk::CommandPool m_commandPool;
     std::vector<vk::CommandBuffer> m_commandBuffers;
@@ -59,10 +54,36 @@ private:
     std::vector<vk::Fence> m_imagesInFlight;
     size_t m_currentFrame = 0;
 
-    vk::Image m_textureImage;
-    vk::DeviceMemory m_textureImageMemory;
-    vk::ImageView m_textureImageView;
-    vk::Sampler m_textureSampler;
+    vk::Sampler m_sampler;
+
+    struct OffscreenPass
+    {
+        vk::Image image;
+        VmaAllocation allocation;
+        vk::ImageView view;
+
+        vk::DescriptorSetLayout descriptorSetLayout;
+        vk::DescriptorSet descriptorSet;
+
+        vk::PipelineLayout pipelineLayout;
+        vk::Pipeline pipeline;
+    } m_offscreenPass;
+
+    struct Texture
+    {
+        vk::Image image;
+        VmaAllocation allocation;
+        vk::ImageView view;
+    } m_texture;
+
+    struct FinalPass
+    {
+        vk::DescriptorSetLayout descriptorSetLayout;
+        vk::DescriptorSet descriptorSet;
+
+        vk::PipelineLayout pipelineLayout;
+        vk::Pipeline pipeline;
+    } m_finalPass;
 
     bool m_frameBufferResized = false;
 
@@ -75,19 +96,20 @@ private:
     void pick_physical_device();
     void create_device();
     void create_allocator();
+    void create_command_pool();
+    void create_descriptor_pool();
+    void create_sampler();
     void create_swapchain();
     void create_image_views();
-    void create_descriptor_set_layout();
-    void create_graphics_pipeline();
-    void create_command_pool();
+    void create_offscreen_pass_resources();
+    void create_final_pass_resources();
+    void create_offscreen_pipeline();
+    void create_final_pipeline();
     void create_texture_image();
     void create_texture_image_view();
-    void create_texture_sampler();
     void create_vertex_buffer();
     void create_index_buffer();
     void create_uniform_buffers();
-    void create_descriptor_pool();
-    void create_descriptor_sets();
     void create_command_buffers();
     void create_sync_objects();
 
@@ -150,14 +172,8 @@ private:
 
     void end_single_time_commands(vk::CommandBuffer commandBuffer);
 
-    void create_image(uint32_t width,
-                      uint32_t height,
-                      vk::Format format,
-                      vk::ImageTiling tiling,
-                      const vk::ImageUsageFlags& usage,
-                      const vk::MemoryPropertyFlags& properties,
-                      vk::Image& image,
-                      vk::DeviceMemory& imageMemory);
+    void create_image(
+        uint32_t width, uint32_t height, vk::Format format, const vk::ImageUsageFlags& usage, vk::Image& image, VmaAllocation& allocation);
 
     void copy_buffer_to_image(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
 
