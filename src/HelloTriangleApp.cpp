@@ -1147,24 +1147,6 @@ void HelloTriangleApp::cleanup() const
     glfwTerminate();
 }
 
-void HelloTriangleApp::recreate_swapchain()
-{
-    int width = 0;
-    int height = 0;
-    glfwGetFramebufferSize(m_window, &width, &height);
-    while (width == 0 || height == 0)
-    {
-        glfwGetFramebufferSize(m_window, &width, &height);
-        glfwWaitEvents();
-    }
-
-    m_device.waitIdle();
-
-    create_swapchain();
-    create_offscreen_pipeline();
-    create_descriptor_pool();
-}
-
 auto HelloTriangleApp::check_validation_layer_support() -> bool
 {
     std::vector<vk::LayerProperties> availableLayers = vk::enumerateInstanceLayerProperties();

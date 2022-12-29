@@ -133,8 +133,6 @@ private:
 
     void cleanup() const;
 
-    void recreate_swapchain();
-
     /* Checks if all of the requested layers are available */
     static auto check_validation_layer_support() -> bool;
 
