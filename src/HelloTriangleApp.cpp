@@ -21,7 +21,7 @@
 #include <stb_image.h>
 
 const uint32_t WIDTH = 800;
-const uint32_t HEIGHT = 600;
+const uint32_t HEIGHT = 800;
 
 const std::vector VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
 
@@ -47,8 +47,6 @@ struct SwapChainSupportDetails
     std::vector<vk::SurfaceFormatKHR> formats;
     std::vector<vk::PresentModeKHR> presentModes;
 };
-
-constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::array<float, 4> CLEAR_COLOR = { 0.0f, 0.0f, 0.0f, 1.0f };
 
@@ -147,6 +145,7 @@ void HelloTriangleApp::init_window()
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     m_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan - Hello Triangle", nullptr, nullptr);
 
@@ -319,15 +318,38 @@ void HelloTriangleApp::create_swapchain()
 
     m_swapChainImageFormat = surfaceFormat.format;
     m_swapChainExtent = extent;
-}
 
-void HelloTriangleApp::create_image_views()
-{
     m_swapChainImageViews.resize(m_swapChainImages.size());
 
     for (size_t i = 0; i < m_swapChainImages.size(); i++)
     {
         m_swapChainImageViews[i] = create_image_view(m_swapChainImages[i], m_swapChainImageFormat);
+    }
+}
+
+void HelloTriangleApp::prepare_frames()
+{
+    vk::SemaphoreCreateInfo semaphoreInfo{};
+
+    vk::FenceCreateInfo fenceInfo{};
+    fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+
+    for (auto& frame : m_frames)
+    {
+        vk::CommandPoolCreateInfo poolInfo{};
+        poolInfo.queueFamilyIndex = m_graphicsQueueFamily;
+        frame.cmdPool = m_device.createCommandPool(poolInfo);
+
+        vk::CommandBufferAllocateInfo allocInfo{};
+        allocInfo.setCommandPool(frame.cmdPool);
+        allocInfo.setCommandBufferCount(1);
+        allocInfo.setLevel(vk::CommandBufferLevel::ePrimary);
+        frame.cmd = m_device.allocateCommandBuffers(allocInfo)[0];
+
+        frame.imageReadySemaphore = m_device.createSemaphore(semaphoreInfo);
+        frame.renderDoneSemaphore = m_device.createSemaphore(semaphoreInfo);
+
+        frame.cmdExecFence = m_device.createFence(fenceInfo);
     }
 }
 
@@ -663,16 +685,6 @@ void HelloTriangleApp::create_final_pipeline()
     m_device.destroy(fragShaderModule);
 }
 
-void HelloTriangleApp::create_command_pool()
-{
-    QueueFamilyIndices queueFamilyIndices = find_queue_families(m_physicalDevice);
-
-    vk::CommandPoolCreateInfo poolInfo{};
-    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-
-    m_commandPool = m_device.createCommandPool(poolInfo);
-}
-
 void HelloTriangleApp::create_texture_image()
 {
     int texWidth{};
@@ -856,180 +868,6 @@ void HelloTriangleApp::create_descriptor_pool()
     m_descriptorPool = m_device.createDescriptorPool(poolInfo);
 }
 
-void HelloTriangleApp::create_command_buffers()
-{
-    m_commandBuffers.resize(m_swapChainImages.size());
-
-    vk::CommandBufferAllocateInfo allocInfo{};
-    allocInfo.commandPool = m_commandPool;
-    allocInfo.level = vk::CommandBufferLevel::ePrimary;
-    allocInfo.commandBufferCount = static_cast<uint32_t>(m_commandBuffers.size());
-
-    if (m_device.allocateCommandBuffers(&allocInfo, m_commandBuffers.data()) != vk::Result::eSuccess)
-    {
-        throw std::runtime_error("Failed to allocate command buffers!");
-    }
-
-    for (size_t i = 0; i < m_commandBuffers.size(); i++)
-    {
-        vk::CommandBufferBeginInfo beginInfo{};
-
-        if (m_commandBuffers[i].begin(&beginInfo) != vk::Result::eSuccess)
-        {
-            throw std::runtime_error("Failed to begin recording command buffer!");
-        }
-
-        {
-            // Offscreen
-
-            {
-                vk::ImageMemoryBarrier barrier{};
-                barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-                barrier.oldLayout = vk::ImageLayout::eUndefined;
-                barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
-                barrier.image = m_offscreenPass.image;
-                barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-                barrier.subresourceRange.baseMipLevel = 0;
-                barrier.subresourceRange.levelCount = 1;
-                barrier.subresourceRange.baseArrayLayer = 0;
-                barrier.subresourceRange.layerCount = 1;
-
-                m_commandBuffers[i].pipelineBarrier(
-                    vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, {}, barrier);
-            }
-
-            vk::RenderingAttachmentInfo colorAttachmentInfo{};
-            colorAttachmentInfo.imageView = m_offscreenPass.view;
-            colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-            colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-            colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
-            colorAttachmentInfo.clearValue.color.setFloat32({ 0.232f, 0.304f, 0.540f, 1.0f });
-
-            vk::RenderingInfo renderingInfo{};
-            renderingInfo.renderArea.offset = vk::Offset2D(0, 0);
-            renderingInfo.renderArea.extent = vk::Extent2D(WIDTH, HEIGHT);
-            renderingInfo.layerCount = 1;
-            renderingInfo.colorAttachmentCount = 1;
-            renderingInfo.pColorAttachments = &colorAttachmentInfo;
-
-            m_commandBuffers[i].beginRendering(renderingInfo);
-
-            m_commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, m_offscreenPass.pipeline);
-
-            std::vector<vk::Buffer> vertexBuffers = { m_vertexBuffer };
-            std::vector<vk::DeviceSize> offsets = { 0 };
-            m_commandBuffers[i].bindVertexBuffers(0, 1, vertexBuffers.data(), offsets.data());
-
-            m_commandBuffers[i].bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint16);
-
-            m_commandBuffers[i].bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, m_offscreenPass.pipelineLayout, 0, 1, &m_offscreenPass.descriptorSet, 0, nullptr);
-
-            m_commandBuffers[i].drawIndexed(static_cast<uint32_t>(INDICES.size()), 1, 0, 0, 0);
-
-            m_commandBuffers[i].endRendering();
-
-            {
-                vk::ImageMemoryBarrier barrier{};
-                barrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-                barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
-                barrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
-                barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-                barrier.image = m_offscreenPass.image;
-                barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-                barrier.subresourceRange.baseMipLevel = 0;
-                barrier.subresourceRange.levelCount = 1;
-                barrier.subresourceRange.baseArrayLayer = 0;
-                barrier.subresourceRange.layerCount = 1;
-
-                m_commandBuffers[i].pipelineBarrier(
-                    vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, barrier);
-            }
-        }
-
-        {
-            // Swapchain
-
-            vk::ImageMemoryBarrier barrier{};
-            barrier.srcAccessMask = {};
-            barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-            barrier.oldLayout = vk::ImageLayout::eUndefined;
-            barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
-            barrier.image = m_swapChainImages[i];
-            barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-            barrier.subresourceRange.baseMipLevel = 0;
-            barrier.subresourceRange.levelCount = 1;
-            barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount = 1;
-            m_commandBuffers[i].pipelineBarrier(
-                vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, {}, barrier);
-
-            vk::RenderingAttachmentInfo colorAttachmentInfo{};
-            colorAttachmentInfo.imageView = m_swapChainImageViews[i];
-            colorAttachmentInfo.imageLayout = vk::ImageLayout::eAttachmentOptimal;
-            colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
-            colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
-            colorAttachmentInfo.clearValue.color.setFloat32({ 0.0f, 0.0f, 0.0f, 1.0f });
-
-            vk::RenderingInfo renderingInfo{};
-            renderingInfo.renderArea.offset = vk::Offset2D(0, 0);
-            renderingInfo.renderArea.extent = vk::Extent2D(WIDTH, HEIGHT);
-            renderingInfo.layerCount = 1;
-            renderingInfo.colorAttachmentCount = 1;
-            renderingInfo.pColorAttachments = &colorAttachmentInfo;
-
-            m_commandBuffers[i].beginRendering(renderingInfo);
-
-            m_commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, m_finalPass.pipeline);
-
-            m_commandBuffers[i].bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, m_finalPass.pipelineLayout, 0, m_finalPass.descriptorSet, {});
-
-            m_commandBuffers[i].draw(3, 1, 0, 0);
-
-            m_commandBuffers[i].endRendering();
-
-            barrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-            barrier.dstAccessMask = {};
-            barrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
-            barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
-            barrier.image = m_swapChainImages[i];
-            barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-            barrier.subresourceRange.baseMipLevel = 0;
-            barrier.subresourceRange.levelCount = 1;
-            barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount = 1;
-            m_commandBuffers[i].pipelineBarrier(
-                vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eBottomOfPipe, {}, {}, {}, barrier);
-        }
-
-        m_commandBuffers[i].end();
-    }
-}
-
-void HelloTriangleApp::create_sync_objects()
-{
-    m_imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    m_renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    m_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-    m_imagesInFlight.resize(m_swapChainImages.size(), {});
-
-    vk::SemaphoreCreateInfo semaphoreInfo{};
-
-    vk::FenceCreateInfo fenceInfo{};
-    fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        if (m_device.createSemaphore(&semaphoreInfo, nullptr, &m_imageAvailableSemaphores[i]) != vk::Result::eSuccess ||
-            m_device.createSemaphore(&semaphoreInfo, nullptr, &m_renderFinishedSemaphores[i]) != vk::Result::eSuccess ||
-            m_device.createFence(&fenceInfo, nullptr, &m_inFlightFences[i]) != vk::Result::eSuccess)
-        {
-            throw std::runtime_error("Failed to create synchronisation objects for a frame!");
-        }
-    }
-}
-
 void HelloTriangleApp::init_vulkan()
 {
     create_instance();
@@ -1037,11 +875,11 @@ void HelloTriangleApp::init_vulkan()
     pick_physical_device();
     create_device();
     create_allocator();
-    create_command_pool();
     create_descriptor_pool();
     create_sampler();
     create_swapchain();
-    create_image_views();
+
+    prepare_frames();
 
     create_uniform_buffers();
 
@@ -1056,8 +894,6 @@ void HelloTriangleApp::init_vulkan()
 
     create_vertex_buffer();
     create_index_buffer();
-    create_command_buffers();
-    create_sync_objects();
 }
 
 void HelloTriangleApp::update_uniform_buffer(uint32_t currentImage)
@@ -1082,50 +918,152 @@ void HelloTriangleApp::update_uniform_buffer(uint32_t currentImage)
     m_device.unmapMemory(m_uniformBuffersMemory[currentImage]);
 }
 
+void HelloTriangleApp::record_cmd_buffer(const vk::CommandBuffer& cmd)
+{
+    /* Offscreen */
+
+    vk::ImageMemoryBarrier barrier{};
+    barrier.srcAccessMask = {};
+    barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+    barrier.oldLayout = vk::ImageLayout::eUndefined;
+    barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+    barrier.image = m_offscreenPass.image;
+    barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, {}, barrier);
+
+    vk::RenderingAttachmentInfo colorAttachmentInfo{};
+    colorAttachmentInfo.imageView = m_offscreenPass.view;
+    colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+    colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
+    colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
+    colorAttachmentInfo.clearValue.color.setFloat32({ 0.232f, 0.304f, 0.540f, 1.0f });
+
+    vk::RenderingInfo renderingInfo{};
+    renderingInfo.renderArea.offset = vk::Offset2D(0, 0);
+    renderingInfo.renderArea.extent = vk::Extent2D(WIDTH, HEIGHT);
+    renderingInfo.layerCount = 1;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachments = &colorAttachmentInfo;
+
+    cmd.beginRendering(renderingInfo);
+
+    cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, m_offscreenPass.pipeline);
+
+    std::vector<vk::Buffer> vertexBuffers = { m_vertexBuffer };
+    std::vector<vk::DeviceSize> offsets = { 0 };
+    cmd.bindVertexBuffers(0, 1, vertexBuffers.data(), offsets.data());
+
+    cmd.bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint16);
+
+    cmd.bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics, m_offscreenPass.pipelineLayout, 0, 1, &m_offscreenPass.descriptorSet, 0, nullptr);
+
+    cmd.drawIndexed(static_cast<uint32_t>(INDICES.size()), 1, 0, 0, 0);
+
+    cmd.endRendering();
+
+    barrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+    barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+    barrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
+    barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+    barrier.image = m_offscreenPass.image;
+    barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    cmd.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, barrier);
+
+    /* Swapchain */
+
+    barrier.srcAccessMask = {};
+    barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+    barrier.oldLayout = vk::ImageLayout::eUndefined;
+    barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+    barrier.image = m_swapChainImages[m_imageIndex];
+    barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, {}, barrier);
+
+    colorAttachmentInfo.imageView = m_swapChainImageViews[m_imageIndex];
+    colorAttachmentInfo.imageLayout = vk::ImageLayout::eAttachmentOptimal;
+    colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
+    colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
+    colorAttachmentInfo.clearValue.color.setFloat32({ 0.0f, 0.0f, 0.0f, 1.0f });
+
+    renderingInfo.renderArea.offset = vk::Offset2D(0, 0);
+    renderingInfo.renderArea.extent = vk::Extent2D(WIDTH, HEIGHT);
+    renderingInfo.layerCount = 1;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachments = &colorAttachmentInfo;
+
+    cmd.beginRendering(renderingInfo);
+
+    cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, m_finalPass.pipeline);
+
+    cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_finalPass.pipelineLayout, 0, m_finalPass.descriptorSet, {});
+
+    cmd.draw(3, 1, 0, 0);
+
+    cmd.endRendering();
+
+    barrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+    barrier.dstAccessMask = {};
+    barrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
+    barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
+    barrier.image = m_swapChainImages[m_imageIndex];
+    barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    cmd.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eBottomOfPipe, {}, {}, {}, barrier);
+}
+
 void HelloTriangleApp::draw_frame()
 {
-    m_device.waitForFences(m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
+    m_frameIndex = (m_frameIndex + 1) % m_frames.size();
+    auto& frame = m_frames[m_frameIndex];
 
-    uint32_t imageIndex = 0;
-    vk::Result result = m_device.acquireNextImageKHR(m_swapChain, UINT64_MAX, m_imageAvailableSemaphores[m_currentFrame], {}, &imageIndex);
+    m_device.waitForFences(frame.cmdExecFence, VK_TRUE, UINT64_MAX);
+    m_device.resetFences(frame.cmdExecFence);
 
-    if (result == vk::Result::eErrorOutOfDateKHR)
-    {
-        recreate_swapchain();
-        return;
-    }
-    if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
-    {
-        throw std::runtime_error("Failed to acquire swap chain image!");
-    }
+    m_device.resetCommandPool(frame.cmdPool);
 
-    if (m_imagesInFlight[imageIndex])
-    {
-        m_device.waitForFences(1, &m_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-    }
+    m_imageIndex = m_device.acquireNextImageKHR(m_swapChain, UINT64_MAX, frame.imageReadySemaphore, {}).value;
 
-    m_imagesInFlight[imageIndex] = m_inFlightFences[m_currentFrame];
+    update_uniform_buffer(m_imageIndex);
 
-    update_uniform_buffer(imageIndex);
+    vk::CommandBufferBeginInfo beginInfo{};
+    frame.cmd.begin(beginInfo);
+
+    record_cmd_buffer(frame.cmd);
+
+    frame.cmd.end();
 
     vk::SubmitInfo submitInfo{};
 
-    std::vector<vk::Semaphore> waitSemaphores = { m_imageAvailableSemaphores[m_currentFrame] };
+    std::vector<vk::Semaphore> waitSemaphores = { frame.imageReadySemaphore };
     std::vector<vk::PipelineStageFlags> waitStages = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores.data();
     submitInfo.pWaitDstStageMask = waitStages.data();
+    submitInfo.setCommandBuffers(frame.cmd);
 
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &m_commandBuffers[imageIndex];
-
-    std::vector<vk::Semaphore> signalSemaphores = { m_renderFinishedSemaphores[m_currentFrame] };
+    std::vector<vk::Semaphore> signalSemaphores = { frame.renderDoneSemaphore };
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores.data();
 
-    m_device.resetFences(1, &m_inFlightFences[m_currentFrame]);
-
-    m_graphicsQueue.submit(submitInfo, m_inFlightFences[m_currentFrame]);
+    m_graphicsQueue.submit(submitInfo, frame.cmdExecFence);
 
     std::vector<vk::SwapchainKHR> swapChains = { m_swapChain };
     vk::PresentInfoKHR presentInfo{};
@@ -1133,21 +1071,9 @@ void HelloTriangleApp::draw_frame()
     presentInfo.pWaitSemaphores = signalSemaphores.data();
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = swapChains.data();
-    presentInfo.pImageIndices = &imageIndex;
+    presentInfo.pImageIndices = &m_imageIndex;
 
-    result = m_presentQueue.presentKHR(&presentInfo);
-
-    if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || m_frameBufferResized)
-    {
-        m_frameBufferResized = false;
-        recreate_swapchain();
-    }
-    else if (result != vk::Result::eSuccess)
-    {
-        throw std::runtime_error("Failed to present swap chain image!");
-    }
-
-    m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    m_presentQueue.presentKHR(&presentInfo);
 }
 
 void HelloTriangleApp::main_loop()
@@ -1161,9 +1087,9 @@ void HelloTriangleApp::main_loop()
     m_device.waitIdle();
 }
 
-void HelloTriangleApp::clean_swap_chain() const
+void HelloTriangleApp::cleanup() const
 {
-    m_device.freeCommandBuffers(m_commandPool, static_cast<uint32_t>(m_commandBuffers.size()), m_commandBuffers.data());
+    m_device.waitIdle();
 
     m_device.destroy(m_offscreenPass.pipeline, nullptr);
     m_device.destroy(m_offscreenPass.pipelineLayout, nullptr);
@@ -1185,11 +1111,6 @@ void HelloTriangleApp::clean_swap_chain() const
     }
 
     m_device.destroy(m_descriptorPool);
-}
-
-void HelloTriangleApp::cleanup() const
-{
-    clean_swap_chain();
 
     m_device.destroy(m_sampler);
     m_device.destroy(m_texture.view);
@@ -1207,14 +1128,14 @@ void HelloTriangleApp::cleanup() const
     m_device.destroy(m_indexBuffer);
     m_device.free(m_indexBufferMemory);
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    for (auto& frame : m_frames)
     {
-        m_device.destroy(m_imageAvailableSemaphores[i]);
-        m_device.destroy(m_renderFinishedSemaphores[i]);
-        m_device.destroy(m_inFlightFences[i]);
-    }
+        m_device.destroy(frame.imageReadySemaphore);
+        m_device.destroy(frame.renderDoneSemaphore);
+        m_device.destroy(frame.cmdExecFence);
 
-    m_device.destroy(m_commandPool);
+        m_device.destroy(frame.cmdPool);
+    }
 
     vmaDestroyAllocator(m_allocator);
 
@@ -1239,13 +1160,9 @@ void HelloTriangleApp::recreate_swapchain()
 
     m_device.waitIdle();
 
-    clean_swap_chain();
-
     create_swapchain();
-    create_image_views();
     create_offscreen_pipeline();
     create_descriptor_pool();
-    create_command_buffers();
 }
 
 auto HelloTriangleApp::check_validation_layer_support() -> bool
@@ -1469,7 +1386,7 @@ auto HelloTriangleApp::begin_single_time_commands() -> vk::CommandBuffer
 {
     vk::CommandBufferAllocateInfo allocInfo{};
     allocInfo.level = vk::CommandBufferLevel::ePrimary;
-    allocInfo.commandPool = m_commandPool;
+    allocInfo.commandPool = m_frames[m_frameIndex].cmdPool;
     allocInfo.commandBufferCount = 1;
 
     vk::CommandBuffer commandBuffer = m_device.allocateCommandBuffers(allocInfo)[0];
@@ -1493,7 +1410,7 @@ void HelloTriangleApp::end_single_time_commands(vk::CommandBuffer commandBuffer)
     m_graphicsQueue.submit(1, &submitInfo, {});
     m_graphicsQueue.waitIdle();
 
-    m_device.free(m_commandPool, 1, &commandBuffer);
+    m_device.free(m_frames[m_frameIndex].cmdPool, 1, &commandBuffer);
 }
 
 void HelloTriangleApp::create_image(

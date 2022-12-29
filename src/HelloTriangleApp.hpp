@@ -11,6 +11,8 @@
 struct QueueFamilyIndices;
 struct SwapChainSupportDetails;
 
+constexpr int FRAMES_IN_FLIGHT = 2;
+
 class HelloTriangleApp
 {
 public:
@@ -23,6 +25,7 @@ private:
     vk::PhysicalDevice m_physicalDevice;
     vk::Device m_device;
     VmaAllocator m_allocator;
+    uint32_t m_graphicsQueueFamily;
     vk::Queue m_graphicsQueue;
 
     vk::SurfaceKHR m_surface;
@@ -35,6 +38,19 @@ private:
 
     std::vector<vk::ImageView> m_swapChainImageViews;
 
+    struct PerFrame
+    {
+        vk::CommandPool cmdPool;
+        vk::CommandBuffer cmd;
+
+        vk::Semaphore imageReadySemaphore;
+        vk::Semaphore renderDoneSemaphore;
+        vk::Fence cmdExecFence;
+    };
+    std::array<PerFrame, FRAMES_IN_FLIGHT> m_frames{};
+    uint32_t m_frameIndex = 0;
+    uint32_t m_imageIndex;
+
     vk::Buffer m_vertexBuffer;
     vk::DeviceMemory m_vertexBufferMemory;
     vk::Buffer m_indexBuffer;
@@ -44,15 +60,6 @@ private:
     std::vector<vk::DeviceMemory> m_uniformBuffersMemory;
 
     vk::DescriptorPool m_descriptorPool;
-
-    vk::CommandPool m_commandPool;
-    std::vector<vk::CommandBuffer> m_commandBuffers;
-
-    std::vector<vk::Semaphore> m_imageAvailableSemaphores;
-    std::vector<vk::Semaphore> m_renderFinishedSemaphores;
-    std::vector<vk::Fence> m_inFlightFences;
-    std::vector<vk::Fence> m_imagesInFlight;
-    size_t m_currentFrame = 0;
 
     vk::Sampler m_sampler;
 
@@ -96,31 +103,34 @@ private:
     void pick_physical_device();
     void create_device();
     void create_allocator();
-    void create_command_pool();
+
     void create_descriptor_pool();
     void create_sampler();
+
     void create_swapchain();
-    void create_image_views();
+    void prepare_frames();
+
     void create_offscreen_pass_resources();
     void create_final_pass_resources();
     void create_offscreen_pipeline();
     void create_final_pipeline();
+
     void create_texture_image();
     void create_texture_image_view();
+
     void create_vertex_buffer();
     void create_index_buffer();
+
     void create_uniform_buffers();
-    void create_command_buffers();
-    void create_sync_objects();
 
     void init_vulkan();
 
     void update_uniform_buffer(uint32_t currentImage);
+    void record_cmd_buffer(const vk::CommandBuffer& cmd);
 
     void draw_frame();
     void main_loop();
 
-    void clean_swap_chain() const;
     void cleanup() const;
 
     void recreate_swapchain();
